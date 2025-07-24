@@ -1,16 +1,25 @@
-// widgets_input.c
+/*
+ * widgets_input.c  ——  精简、无重复、易维护版本
+ */
 #include "widgets.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <unistd.h>
 
-/* ---------- 工具 ---------- */
-static int utf8_char_len(const char *s) {
-    unsigned char c = (unsigned char)*s;
-    if (c < 0x80) return 1;
-    if ((c & 0xE0) == 0xC0) return 2;
-    if ((c & 0xF0) == 0xE0) return 3;
-    if ((c & 0xF8) == 0xF0) return 4;
-    return 1; 
+/* ---------- 纯工具 ---------- */
+typedef struct {
+    size_t byte;   /* 字节下标 */
+    int    col;    /* 逻辑列坐标 */
+} Cursor;
+
+static inline int utf8_len(char c) {
+    unsigned char u = (unsigned char)c;
+    if (u < 0x80)        return 1;
+    if ((u & 0xE0) == 0xC0) return 2;
+    if ((u & 0xF0) == 0xE0) return 3;
+    if ((u & 0xF8) == 0xF0) return 4;
+    return 1;
 }
 
 static inline int wcwidth_fast(uint32_t cp) {
@@ -20,121 +29,179 @@ static inline int wcwidth_fast(uint32_t cp) {
             (cp >= 0xFF01 && cp <= 0xFF5E)) ? 2 : 1;
 }
 
+static uint32_t utf8_to_cp(const char *s, int *len_out) {
+    int len = utf8_len(*s);
+    *len_out = len;
+    uint32_t cp = 0;
+    for (int i = 0; i < len; ++i)
+        cp = (cp << 8) | (unsigned char)s[i];
+    return cp;
+}
+
+/* 把字节位置转换成逻辑列坐标；返回 0 表示起点 */
+static int byte_to_col(const char *text, size_t byte_pos) {
+    int col = 0;
+    const char *p = text;
+    while (*p && (size_t)(p - text) < byte_pos) {
+        int len;
+        uint32_t cp = utf8_to_cp(p, &len);
+        col += wcwidth_fast(cp);
+        p += len;
+    }
+    return col;
+}
+
+/* 把逻辑列坐标转成最近字节位置；返回字节下标 */
+static size_t col_to_byte(const char *text, int target_col) {
+    int col = 0;
+    const char *p = text;
+    size_t byte = 0;
+    while (*p) {
+        int len;
+        uint32_t cp = utf8_to_cp(p, &len);
+        int w = wcwidth_fast(cp);
+        if (col + w > target_col) break;
+        col += w;
+        byte += len;
+        p += len;
+    }
+    return byte;
+}
+
 /* ---------- 构造 ---------- */
 TuiNode *input_new(TuiRect r, const char *id, struct InputData *data,
                    void (*draw)(TuiNode *, void *)) {
     TuiNode *in = tui_node_new(r.x, r.y, r.w, r.h);
-    in->id       = id;
+    in->id             = id;
     in->bits.focusable = 1;
-    in->data     = data;
-    in->draw     = draw ? draw : input_draw;
+    in->data           = data;
+    in->draw           = draw ? draw : input_draw;
 
     if (!data->text) data->text = strdup("");
     data->cursor_pos = strlen(data->text);
+    data->vis_start  = 0;
+    data->vis_start_x = 0;
+
+    /* 初始化 vis_start_x */
+    int visible_width = r.w - 2;
+    int cursor_col = byte_to_col(data->text, data->cursor_pos);
+    if (cursor_col >= visible_width)
+        data->vis_start_x = cursor_col - visible_width + 1;
+
     return in;
 }
 
-/* ---------- 绘制+编辑 ---------- */
-void input_draw(TuiNode *in, void *evt) {
-    if (!in) return;
-    struct InputData *data = (struct InputData *)in->data;
+/* ---------- 事件处理 ---------- */
+void input_handle_event(TuiNode *in, event_t *e) {
+    if (!in || !in->bits.focus) return;
+    struct InputData *d = in->data;
+    int visible_width   = in->bounds.w - 2;
 
-    /* ---------- 1. 仅 focus 时处理键盘 ---------- */
-    if (evt && in->bits.focus == 1) {
-        event_t *e = (event_t *)evt;
-        if (e->type == EVENT_KEY) {
-            for (int i = 0; i < e->key.num; ++i) {
-                if (e->key.type[i] == KEY_NORMAL) {
-                    int key = e->key.key[i];
-                    if (key < 256 && strlen(data->text) < data->max_length) {
-                        size_t old = strlen(data->text);
-                        char *tmp  = malloc(old + 2);
-                        strncpy(tmp, data->text, data->cursor_pos);
-                        tmp[data->cursor_pos] = (char)key;
-                        strcpy(tmp + data->cursor_pos + 1,
-                               data->text + data->cursor_pos);
-                        free(data->text);
-                        data->text = tmp;
-                        data->cursor_pos += 1;
+    /* 1. 鼠标点击 */
+    if (e->type == EVENT_MOUSE && e->mouse.type == MOUSE_PRESS) {
+        int click_x = e->mouse.x - in->abs_x - 1;
+        int click_y = e->mouse.y - in->abs_y - 2;
+        if (click_x >= 0 && click_x < in->bounds.w - 2 &&
+            click_y >= 0 && click_y < in->bounds.h - 2) {
+            int target_col = click_x + d->vis_start_x;
+            d->cursor_pos = col_to_byte(d->text, target_col);
+        }
+    }
+
+    /* 2. 键盘 */
+    if (e->type == EVENT_KEY) {
+        for (int i = 0; i < e->key.num; ++i) {
+            if (e->key.type[i] == KEY_NORMAL) {
+                int ch = e->key.key[i];
+                if (ch < 256 && strlen(d->text) < d->max_length) {
+                    size_t old = strlen(d->text);
+                    char *tmp = malloc(old + 2);
+                    strncpy(tmp, d->text, d->cursor_pos);
+                    tmp[d->cursor_pos] = (char)ch;
+                    strcpy(tmp + d->cursor_pos + 1,
+                           d->text + d->cursor_pos);
+                    free(d->text);
+                    d->text = tmp;
+                    d->cursor_pos += 1;
+                }
+            } else if (e->key.type[i] == KEY_SPECIAL) {
+                switch (e->key.key[i]) {
+                case K_BACKSPACE:
+                    if (d->cursor_pos > 0) {
+                        int len = utf8_len(d->text[d->cursor_pos - 1]);
+                        memmove(d->text + d->cursor_pos - len,
+                                d->text + d->cursor_pos,
+                                strlen(d->text) - d->cursor_pos + 1);
+                        d->cursor_pos -= len;
                     }
-                } else if (e->key.type[i] == KEY_SPECIAL) {
-                    switch (e->key.key[i]) {
-                    case K_BACKSPACE:
-                        if (data->cursor_pos > 0) {
-                            int len = utf8_char_len(data->text +
-                                                    data->cursor_pos - 1);
-                            memmove(data->text + data->cursor_pos - len,
-                                    data->text + data->cursor_pos,
-                                    strlen(data->text) - data->cursor_pos + 1);
-                            data->cursor_pos -= len;
-                        }
-                        break;
-                    case K_DEL:
-                        if (data->text[data->cursor_pos]) {
-                            int len = utf8_char_len(data->text +
-                                                    data->cursor_pos);
-                            memmove(data->text + data->cursor_pos,
-                                    data->text + data->cursor_pos + len,
-                                    strlen(data->text) -
-                                    data->cursor_pos - len + 1);
-                        }
-                        break;
-                    case K_LEFT:
-                        if (data->cursor_pos > 0) {
-                            data->cursor_pos -=
-                                utf8_char_len(data->text +
-                                              data->cursor_pos - 1);
-                        }
-                        break;
-                    case K_RIGHT:
-                        if (data->text[data->cursor_pos]) {
-                            data->cursor_pos +=
-                                utf8_char_len(data->text +
-                                              data->cursor_pos);
-                        }
-                        break;
-                    case K_ENTER: /* 可根据需要回调 */ break;
-                    case K_TAB:   /* 由外层统一处理 */   break;
+                    break;
+                case K_DEL:
+                    if (d->text[d->cursor_pos]) {
+                        int len = utf8_len(d->text[d->cursor_pos]);
+                        memmove(d->text + d->cursor_pos,
+                                d->text + d->cursor_pos + len,
+                                strlen(d->text) - d->cursor_pos - len + 1);
                     }
+                    break;
+                case K_LEFT:
+                    if (d->cursor_pos > 0)
+                        d->cursor_pos -= utf8_len(d->text[d->cursor_pos - 1]);
+                    break;
+                case K_RIGHT:
+                    if (d->text[d->cursor_pos])
+                        d->cursor_pos += utf8_len(d->text[d->cursor_pos]);
+                    break;
                 }
             }
         }
     }
 
-    /* ---------- 2. 渲染 ---------- */
-    style_t st = data->st;
-    if (in->bits.focus == 1) {
-        st.bg = 4;
-        st.cursor = 1;
-        term_cursor_show(1);
-    } else if (in->bits.hover == 1) {
-        st.bg = 3;
-        st.cursor = 0;          /* hover 不显示光标 */
-        term_cursor_show(0);
-    } else {
-        st.bg = 5;
-        st.cursor = 0;
-        term_cursor_show(0);
-    }
-    st.rect   = 1;
-    st.border = 1;
-    st.text   = 1;
+    /* 3. 自动滚动 */
+    int cursor_col = byte_to_col(d->text, d->cursor_pos);
+    if (cursor_col < d->vis_start_x)
+        d->vis_start_x = cursor_col;
+    else if (cursor_col >= d->vis_start_x + visible_width)
+        d->vis_start_x = cursor_col - visible_width + 1;
+}
 
-    rect_t r = { in->abs_x, in->abs_y, in->bounds.w, in->bounds.h };
-    canvas_draw(r, data->text, st);
+/* ---------- 纯绘制 ---------- */
+void input_draw(TuiNode *in, void *evt) {
+    if (!in) return;
+    struct InputData *d = in->data;
+    int visible_width   = in->bounds.w - 2;
 
-    /* ---------- 3. 光标定位（仅 focus） ---------- */
-    if (in->bits.focus == 1) {
-        int cursor_x = 0;
-        const char *p = data->text;
-        for (int i = 0; i < data->cursor_pos && *p;) {
-            int len = utf8_char_len(p);
-            uint32_t cp = 0;
-            for (int j = 0; j < len; ++j)
-                cp = (cp << 8) | (unsigned char)p[j];
-            p += len;
-            cursor_x += wcwidth_fast(cp);
-        }
-        canvas_cursor_move(in->abs_x + cursor_x, in->abs_y + 1);
+    /* 1. 先处理事件 */
+    if (evt) input_handle_event(in, (event_t *)evt);
+
+    /* 2. 计算可见字符串起点 */
+    int current_col = 0;
+    const char *p = d->text;
+    size_t start_byte = 0;
+    while (*p) {
+        int len;
+        uint32_t cp = utf8_to_cp(p, &len);
+        int w = wcwidth_fast(cp);
+        if (current_col + w > d->vis_start_x) break;
+        current_col += w;
+        start_byte += len;
+        p += len;
     }
+
+    /* 3. 渲染 */
+    style_t st = d->st;
+    int cursor_able = 0;
+    if (in->bits.focus) { st.bg = 4; cursor_able = 1;
+    } else if (in->bits.hover) { st.bg = 3; cursor_able = 0;
+    } else { st.bg = 5; cursor_able = 0;}
+    st.rect = st.border = st.text = 1;
+
+    rect_t r_rect = { in->abs_x, in->abs_y, in->bounds.w, in->bounds.h };
+    canvas_draw(r_rect, d->text + start_byte, st);
+
+    /* 4. 光标 */
+    int cursor_col = byte_to_col(d->text, d->cursor_pos);
+    int cursor_x = cursor_col - d->vis_start_x;
+    cursor_x = (cursor_x < 0) ? 0 :
+               (cursor_x >= visible_width) ? visible_width - 1 : cursor_x;
+    canvas_cursor_move(cursor_able, in->abs_x + 1 + cursor_x, in->abs_y + 1, 1);
 }

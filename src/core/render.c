@@ -218,11 +218,6 @@ static inline void render_cell_fast(int idx, char **p, int with_pos) {
     memcpy(dst, ch, ch_len);               dst += ch_len;
     memcpy(dst, "\033[0m", 4);             dst += 4;
 
-    if (st.cursor) {
-        memcpy(dst, CURSOR_SEQ[st.cursor], CURSOR_LEN[st.cursor]);
-        dst += CURSOR_LEN[st.cursor];
-    }
-
     *p = dst;
 }
 
@@ -237,9 +232,14 @@ void canvas_flush(void) {
             g_canvas.sty[i].v != g_last_canvas.sty[i].v)
             ++changes;
     }
+
+    printf(g_canvas.cursor.cursor_able ? "\033[?25h" : "\033[?25l");
+    printf("\033[%d q\033[%d;%dH", g_canvas.cursor.st, g_canvas.cursor.y + 1, g_canvas.cursor.x + 1);
+    fflush(stdout);
+
     if (!changes) return;
 
-    size_t cap = changes * 64;            // 宽松估计
+    size_t cap = changes * 64;         
     char *buf  = malloc(cap);
     if (!buf) return;
 
@@ -258,8 +258,8 @@ void canvas_flush(void) {
 
         render_cell_fast(i, &ptr, 1);
     }
-
     fwrite(buf, 1, ptr - buf, stdout);
+    printf("\033[%d q\033[%d;%dH", g_canvas.cursor.st, g_canvas.cursor.y + 1, g_canvas.cursor.x + 1);
     fflush(stdout);
     free(buf);
 
@@ -292,7 +292,12 @@ void canvas_flush_all(void) {
     memcpy(g_last_canvas.sty, g_canvas.sty, N * sizeof(style_t));
 }
 
-void canvas_cursor_move(int x, int y) {
-    printf("\033[%d;%dH", y + 1, x + 1);
-    fflush(stdout);
+void canvas_rest_cursor(void) {
+    g_canvas.cursor.cursor_able = 0;
+}
+void canvas_cursor_move(int cusr_able, int x, int y, int style) {
+    g_canvas.cursor.cursor_able = cusr_able;
+    g_canvas.cursor.x = x;
+    g_canvas.cursor.y = y;
+    g_canvas.cursor.st = style;
 }

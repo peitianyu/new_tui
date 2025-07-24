@@ -62,6 +62,7 @@ TEST(input, test) {
         }
 
         tui_calc(g_root);
+        canvas_rest_cursor();
         tui_draw(g_root, &e);   
         canvas_flush();
     }

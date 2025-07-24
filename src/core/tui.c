@@ -198,6 +198,7 @@ static TuiNode *hit_recursive(TuiNode *n, int16_t x, int16_t y) {
 TuiNode *tui_hit_node(TuiNode *root, int16_t mx, int16_t my, int mouse_down) {
     if (!root) return NULL;
     TuiNode *h = hit_recursive(root, mx, my);
+    if(!h) return NULL;
     if(h->bits.focus == 1) return h;
     
     if (h && h->bits.focusable) {

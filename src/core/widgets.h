@@ -13,10 +13,12 @@ TuiNode *button_new(TuiRect r, const char *label, struct ButtonData *data, void 
 void button_draw(TuiNode *btn, void *event);
 
 struct InputData {
-    char *text;             // 当前文本
-    int   cursor_pos;       // 光标位置（以字节为单位）
-    int   max_length;       // 最大长度
-    style_t st;             // 样式       
+    char *text;          
+    size_t cursor_pos;     // 光标位置（字节偏移）
+    size_t vis_start;      // 可见区域起始位置（字节偏移）
+    int vis_start_x;       // 可见区域起始位置（屏幕列偏移）
+    size_t max_length;      
+    style_t st;                 
 };
 TuiNode *input_new(TuiRect r, const char *id, struct InputData *data, void (*draw)(TuiNode *, void *));
 void input_draw(TuiNode *in, void *event);
