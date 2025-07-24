@@ -53,8 +53,8 @@ typedef struct {
 void term_init(void);
 void term_restore(void);
 void term_clear(void);
+void term_cursor_show(int show);
 void term_size(int *width, int *height);
-int  term_sigwinch_received(void);
 
 int input_ready(int ms);
 event_t read_event(void);

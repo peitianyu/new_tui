@@ -1,14 +1,12 @@
 #include "term.h"
 
 static struct termios g_original_tio;
-static volatile sig_atomic_t g_sigwinch = 0;
 void term_restore(void) {
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_original_tio);
     printf("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1015l\x1b[?1006l\x1b[?25h");
     fflush(stdout);
 }
 
-static void handle_sigwinch(int sig) { (void)sig; g_sigwinch = 1; }
 void term_size(int *width, int *height) {
     struct winsize ws;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws);
@@ -16,15 +14,9 @@ void term_size(int *width, int *height) {
     *height = ws.ws_row;
 }
 
-int term_sigwinch_received(void) {
-    if (g_sigwinch) { g_sigwinch = 0; return 1; }
-    return 0;
-}
-
 void term_init(void) {
     signal(SIGINT, SIG_IGN);  
     signal(SIGTSTP, SIG_IGN); 
-    signal(SIGWINCH, handle_sigwinch);
 
     tcgetattr(STDIN_FILENO, &g_original_tio);
     struct termios raw = g_original_tio;
@@ -49,6 +41,11 @@ void term_init(void) {
 
 void term_clear(void) {
     printf("\x1b[2J\x1b[H");
+    fflush(stdout);
+}
+
+void term_cursor_show(int show) {
+    printf("%s", show ? "\033[?25h" : "\033[?25l");
     fflush(stdout);
 }
 
