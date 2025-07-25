@@ -15,8 +15,7 @@ void button_draw(TuiNode *btn, void *event);
 struct InputData {
     char *text;          
     size_t cursor_pos;     // 光标位置（字节偏移）
-    size_t vis_start;      // 可见区域起始位置（字节偏移）
-    int vis_start_x;       // 可见区域起始位置（屏幕列偏移）
+    int vis_start;         // 可见区域起始位置（屏幕列偏移）
     size_t max_length;      
     style_t st;                 
 };

@@ -32,8 +32,7 @@ void term_init(void) {
     tcsetattr(STDIN_FILENO, TCSANOW, &raw);
     tcsetattr(STDIN_FILENO, TCSANOW, &raw);
 
-    printf("\x1b[?1000h\x1b[?1002h\x1b[?1003h\x1b[?1015h\x1b[?1006h");
-    printf("\x1b[?25l");
+    printf("\x1b[?1000h\x1b[?1002h\x1b[?1003h\x1b[?1015h\x1b[?1006h\x1b[?25l");
     fflush(stdout);
 
     atexit(term_restore);

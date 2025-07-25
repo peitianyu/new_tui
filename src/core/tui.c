@@ -68,7 +68,8 @@ static void layout_vert(TuiNode *p) {
         else fix_h += p->kids[i]->bounds.h;
     }
     int16_t avail_h = p->bounds.h - fix_h;
-    int16_t exp_h   = exp ? avail_h / exp : 0;
+    int16_t exp_h = 0;
+    if (exp) exp_h = avail_h / exp;
 
     for (int i = 0; i < p->kid_cnt; ++i) {
         TuiNode *c = p->kids[i];
@@ -150,6 +151,7 @@ static void calc_recursive(TuiNode *n) {
     int16_t x1 = (self.x + self.w  < pvis.x + pvis.w ) ? self.x + self.w  : pvis.x + pvis.w;
     int16_t y1 = (self.y + self.h < pvis.y + pvis.h) ? self.y + self.h : pvis.y + pvis.h;
     n->clip = (TuiRect){x0, y0, (x1 > x0 ? x1 - x0 : 0), (y1 > y0 ? y1 - y0 : 0)};
+    if (n->clip.w <= 0 || n->clip.h <= 0) return;
 
     apply_layout(n);
     for (int i = 0; i < n->kid_cnt; ++i) calc_recursive(n->kids[i]);
@@ -181,13 +183,21 @@ static inline bool inside(const TuiNode *n, int16_t x, int16_t y) {
 static void clear_hover_recursive(TuiNode *n) {
     if (!n) return;
     n->bits.hover = 0;
-    n->bits.focus = 0;
     for (int i = 0; i < n->kid_cnt; ++i)
         clear_hover_recursive(n->kids[i]);
 }
 
+static void clear_focus_recursive(TuiNode *n) {
+    if (!n) return;
+    n->bits.focus = 0;
+    for (int i = 0; i < n->kid_cnt; ++i)
+        clear_focus_recursive(n->kids[i]);
+}
+
 static TuiNode *hit_recursive(TuiNode *n, int16_t x, int16_t y) {
-    if (!n || !inside(n, x, y)) return NULL;
+    if (!n) return NULL;
+    if (!inside(n, x, y)) return NULL;
+
     for (int i = n->kid_cnt - 1; i >= 0; --i) {
         TuiNode *c = hit_recursive(n->kids[i], x, y);
         if (c && c->bits.focusable) return c;
@@ -198,11 +208,12 @@ static TuiNode *hit_recursive(TuiNode *n, int16_t x, int16_t y) {
 TuiNode *tui_hit_node(TuiNode *root, int16_t mx, int16_t my, int mouse_down) {
     if (!root) return NULL;
     TuiNode *h = hit_recursive(root, mx, my);
-    if(!h) return NULL;
+    if(!h) {clear_hover_recursive(root); if(mouse_down) clear_focus_recursive(root); return NULL;}
     if(h->bits.focus == 1) return h;
-    
-    if (h && h->bits.focusable) {
-        if(mouse_down) {clear_hover_recursive(root); h->bits.focus = 1;}
+    clear_hover_recursive(root);
+
+    if (h->bits.focusable) {
+        if(mouse_down) h->bits.focus = 1;
         else           h->bits.hover = 1;
     }
     return h;

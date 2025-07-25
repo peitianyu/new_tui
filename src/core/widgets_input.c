@@ -29,11 +29,10 @@ static inline int wcwidth_fast(uint32_t cp) {
             (cp >= 0xFF01 && cp <= 0xFF5E)) ? 2 : 1;
 }
 
-static uint32_t utf8_to_cp(const char *s, int *len_out) {
-    int len = utf8_len(*s);
-    *len_out = len;
+static inline uint32_t utf8_to_cp(const char *s, int *len_out) {
+    *len_out = utf8_len(*s);
     uint32_t cp = 0;
-    for (int i = 0; i < len; ++i)
+    for (int i = 0; i < *len_out; ++i)
         cp = (cp << 8) | (unsigned char)s[i];
     return cp;
 }
@@ -79,14 +78,13 @@ TuiNode *input_new(TuiRect r, const char *id, struct InputData *data,
 
     if (!data->text) data->text = strdup("");
     data->cursor_pos = strlen(data->text);
-    data->vis_start  = 0;
-    data->vis_start_x = 0;
+    data->vis_start = 0;
 
-    /* 初始化 vis_start_x */
+    /* 初始化 vis_start */
     int visible_width = r.w - 2;
     int cursor_col = byte_to_col(data->text, data->cursor_pos);
     if (cursor_col >= visible_width)
-        data->vis_start_x = cursor_col - visible_width + 1;
+        data->vis_start = cursor_col - visible_width + 1;
 
     return in;
 }
@@ -103,7 +101,7 @@ void input_handle_event(TuiNode *in, event_t *e) {
         int click_y = e->mouse.y - in->abs_y - 2;
         if (click_x >= 0 && click_x < in->bounds.w - 2 &&
             click_y >= 0 && click_y < in->bounds.h - 2) {
-            int target_col = click_x + d->vis_start_x;
+            int target_col = click_x + d->vis_start;
             d->cursor_pos = col_to_byte(d->text, target_col);
         }
     }
@@ -114,8 +112,8 @@ void input_handle_event(TuiNode *in, event_t *e) {
             if (e->key.type[i] == KEY_NORMAL) {
                 int ch = e->key.key[i];
                 if (ch < 256 && strlen(d->text) < d->max_length) {
-                    size_t old = strlen(d->text);
-                    char *tmp = malloc(old + 2);
+                    size_t old = strlen(d->text), new_len = old + 1;
+                    char *tmp = malloc(new_len + 1);
                     strncpy(tmp, d->text, d->cursor_pos);
                     tmp[d->cursor_pos] = (char)ch;
                     strcpy(tmp + d->cursor_pos + 1,
@@ -158,10 +156,10 @@ void input_handle_event(TuiNode *in, event_t *e) {
 
     /* 3. 自动滚动 */
     int cursor_col = byte_to_col(d->text, d->cursor_pos);
-    if (cursor_col < d->vis_start_x)
-        d->vis_start_x = cursor_col;
-    else if (cursor_col >= d->vis_start_x + visible_width)
-        d->vis_start_x = cursor_col - visible_width + 1;
+    if (cursor_col < d->vis_start)
+        d->vis_start = cursor_col;
+    else if (cursor_col >= d->vis_start + visible_width)
+        d->vis_start = cursor_col - visible_width + 1;
 }
 
 /* ---------- 纯绘制 ---------- */
@@ -181,7 +179,7 @@ void input_draw(TuiNode *in, void *evt) {
         int len;
         uint32_t cp = utf8_to_cp(p, &len);
         int w = wcwidth_fast(cp);
-        if (current_col + w > d->vis_start_x) break;
+        if (current_col + w > d->vis_start) break;
         current_col += w;
         start_byte += len;
         p += len;
@@ -200,7 +198,7 @@ void input_draw(TuiNode *in, void *evt) {
 
     /* 4. 光标 */
     int cursor_col = byte_to_col(d->text, d->cursor_pos);
-    int cursor_x = cursor_col - d->vis_start_x;
+    int cursor_x = cursor_col - d->vis_start;
     cursor_x = (cursor_x < 0) ? 0 :
                (cursor_x >= visible_width) ? visible_width - 1 : cursor_x;
     canvas_cursor_move(cursor_able, in->abs_x + 1 + cursor_x, in->abs_y + 1, 1);

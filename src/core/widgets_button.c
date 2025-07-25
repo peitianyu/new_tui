@@ -18,7 +18,7 @@ void button_draw(TuiNode *btn, void *event) {
     else if(btn->bits.focus == 1) st.bg = 4;
     else                          st.bg = 5;
     rect_t r = { btn->abs_x, btn->abs_y, btn->bounds.w, btn->bounds.h };
-    canvas_draw(r, (btn->bits.focus == 1) ? "world" : (data.label), st);
-
+    canvas_draw(r, btn->bits.focus ? "world" : data.label, st);
+    
     btn->bits.focus = 0;
 }

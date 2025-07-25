@@ -28,7 +28,7 @@ void canvas_init(int w, int h) {
     g_canvas.w = w; g_canvas.h = h;
     g_canvas.buf = calloc(w * h, sizeof(uint32_t));
     g_canvas.sty = calloc(w * h, sizeof(style_t));
-    for (int i = 0; i < w * h; ++i) g_canvas.buf[i] = ' ';
+    memset(g_canvas.buf, ' ', w * h * sizeof(uint32_t));
 
     g_last_canvas.w = w; g_last_canvas.h = h;
     g_last_canvas.buf = calloc(w * h, sizeof(uint32_t));
@@ -161,20 +161,10 @@ static const uint8_t BG_LEN[16] = {
 
 #undef SEQ_LEN
 
-/* ---------- 光标 ANSI ---------- */
-static const char *CURSOR_SEQ[4] = {
-    "",                       // 0:none
-    "\033[1 q",               // 1:block steady
-    "\033[3 q",               // 2:underline steady
-    "\033[5 q"                // 3:bar steady
-};
-static const uint8_t CURSOR_LEN[4] = { 0, 5, 5, 5 };
 /* ---------------------------------------- */
 static inline int pos_seq_len(int y, int x) {
-    if (y < 10 && x < 10) return 6;          // "\033[1;1H"
-    if (y < 100 && x < 100) return 8;        // "\033[12;34H"
-    if (y < 1000 && x < 1000) return 10;
-    return 16;
+    char tmp[32];
+    return sprintf(tmp, "\033[%d;%dH", y, x);
 }
 
 // 统一字符编码处理
