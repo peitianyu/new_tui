@@ -123,6 +123,17 @@ void input_handle_event(TuiNode *n, event_t *e)
                     if (d->text[d->cursor_pos])
                         d->cursor_pos += utf8_len(d->text[d->cursor_pos]);
                     break;
+                case K_HOME:
+                    d->cursor_pos = 0;
+                    break;
+                case K_END:
+                    d->cursor_pos = 0;
+                    for (const char *p = d->text; *p; ) {
+                        int len = utf8_len(*p);
+                        d->cursor_pos += len;
+                        p += len;
+                    }
+                    break;
                 }
             }
         }

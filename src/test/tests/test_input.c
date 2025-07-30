@@ -33,7 +33,7 @@ TEST(input, test) {
     struct InputData input_data = {
         .text = 0, 
         .cursor_pos = 0,
-        .max_length = 10,
+        .max_length = 100,
         .st = (style_t){ .fg = 2, .text = 1, .cursor = 1, .rect = 1, .border = 1, .align_horz = 0, .align_vert = 1 }
     };
     g_input = input_new((TuiRect){10, 5, 30, 3}, "input", &input_data, input_draw);
