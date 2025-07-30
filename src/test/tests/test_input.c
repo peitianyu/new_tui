@@ -31,7 +31,7 @@ TEST(input, test) {
     
     // 创建输入框
     struct InputData input_data = {
-        .text = strdup("Type here"),   // 初始文本
+        .text = 0, 
         .cursor_pos = 0,
         .max_length = 100,
         .st = (style_t){ .fg = 2, .text = 1, .cursor = 1, .rect = 1, .border = 1, .align_horz = 0, .align_vert = 1 }
