@@ -2,7 +2,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-/* ---------- 工具 ---------- */
 static inline int utf8_len(char c)
 {
     unsigned char u = (unsigned char)c;
@@ -20,7 +19,6 @@ static inline int wcwidth_fast(uint32_t cp)
            (cp >= 0xFF01 && cp <= 0xFF5E) ? 2 : 1;
 }
 
-/* 字节 → 列（一次扫描）*/
 static int byte_to_col(const char *s, size_t byte)
 {
     int col = 0;
@@ -34,7 +32,6 @@ static int byte_to_col(const char *s, size_t byte)
     return col;
 }
 
-/* 列 → 字节（一次扫描）*/
 static size_t col_to_byte(const char *s, int target)
 {
     int col = 0;
@@ -51,9 +48,7 @@ static size_t col_to_byte(const char *s, int target)
     return p - s;
 }
 
-/* ---------- 构造 ---------- */
-TuiNode *input_new(TuiRect r, const char *id, struct InputData *d,
-                   void (*draw)(TuiNode *, void *))
+TuiNode *input_new(TuiRect r, const char *id, struct InputData *d, void (*draw)(TuiNode *, void *))
 {
     TuiNode *n = tui_node_new(r.x, r.y, r.w, r.h);
     n->id = id; n->bits.focusable = 1;
@@ -69,7 +64,6 @@ TuiNode *input_new(TuiRect r, const char *id, struct InputData *d,
     return n;
 }
 
-/* ---------- 事件 ---------- */
 void input_handle_event(TuiNode *n, event_t *e)
 {
     if (!n || !n->bits.focus) return;
