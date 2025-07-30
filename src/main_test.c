@@ -15,11 +15,17 @@ static void print_backtrace() {
     }
 
     free(symbols);
+
+    exit(1);
 }
 
 void main() {
     signal(SIGSEGV, print_backtrace);
     signal(SIGINT, print_backtrace);
+    signal(SIGABRT, print_backtrace);
+    signal(SIGFPE, print_backtrace);
+    signal(SIGILL, print_backtrace);
+    signal(SIGBUS, print_backtrace);
 
     RUN_ALL_TESTS();
 }

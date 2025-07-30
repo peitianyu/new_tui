@@ -120,13 +120,30 @@ static event_t parse_keyboard_event(const char *b, int n) {
             case 'B': e.key.key[0] = K_DOWN;  e.key.num = 1; return e;
             case 'C': e.key.key[0] = K_RIGHT; e.key.num = 1; return e;
             case 'D': e.key.key[0] = K_LEFT;  e.key.num = 1; return e;
+            case 'H': e.key.key[0] = K_HOME;  e.key.num = 1; return e;
+            case 'F': e.key.key[0] = K_END;   e.key.num = 1; return e;
         }
     }
-    if (n == 4 && memcmp(b, "\x1b[3~", 4) == 0) {
-        e.key.type[0] = KEY_SPECIAL;
-        e.key.key[0] = K_DEL;
-        e.key.num = 1;
-        return e;
+    
+    if (n == 4) {
+        if (memcmp(b, "\x1b[3~", 4) == 0) {
+            e.key.type[0] = KEY_SPECIAL;
+            e.key.key[0] = K_DEL;
+            e.key.num = 1;
+            return e;
+        }
+        if (memcmp(b, "\x1b[5~", 4) == 0) {
+            e.key.type[0] = KEY_SPECIAL;
+            e.key.key[0] = K_PGUP;
+            e.key.num = 1;
+            return e;
+        }
+        if (memcmp(b, "\x1b[6~", 4) == 0) {
+            e.key.type[0] = KEY_SPECIAL;
+            e.key.key[0] = K_PGDN;
+            e.key.num = 1;
+            return e;
+        }
     }
 
     int pos = 0;

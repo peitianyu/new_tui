@@ -23,6 +23,10 @@
 #define K_LEFT      0xF0013
 #define K_RIGHT     0xF0014
 #define K_DEL       0xF0015
+#define K_HOME      0xF0016
+#define K_END       0xF0017
+#define K_PGUP      0xF0018
+#define K_PGDN      0xF0019
 #define CTRL_KEY(k) ((k) & 0x1f)
 
 typedef enum { KEY_SPECIAL, KEY_NORMAL } key_type_t;
