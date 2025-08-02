@@ -1,5 +1,10 @@
 #include "core/widgets.h"
 #include "core/c_test.h"
+#include "core/log.h"
+
+static void click(ButtonData *b, void *event) {
+    b->label = "world";
+}
 
 TEST(button, test) {
     setlocale(LC_ALL, "");
@@ -9,7 +14,7 @@ TEST(button, test) {
     canvas_init(w, h);
 
     TuiNode *root = tui_node_new(0, 0, w, h);
-    ButtonData data = { "hello", (style_t){ .fg = 2, .text = 1, .rect = 1, .border = 0, .align_horz = 1, .align_vert = 1 } };
+    ButtonData data = { "hello", (style_t){ .fg = 2, .text = 1, .rect = 1, .border = 0, .align_horz = 1, .align_vert = 1 }, .func = click };
     TuiNode  *btn  = button_new((TuiRect){5, 5, 7, 1}, "button", &data);
     tui_node_add(root, btn);
 

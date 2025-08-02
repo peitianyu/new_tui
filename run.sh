@@ -5,6 +5,6 @@ fi
 
 cd build && cmake .. && make -j6
 
-./all_tests 2> debug.log
+./all_tests 
 
 cd ..

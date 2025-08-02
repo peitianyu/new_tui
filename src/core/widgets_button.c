@@ -14,14 +14,13 @@ TuiNode *button_new(TuiRect r, const char *label, ButtonData *data) {
 static void button_draw(TuiNode *btn, void *event) {
     if (!btn) return;
 
-    ButtonData data = *(ButtonData *)btn->data;
-    style_t st = data.st;
+    ButtonData *data = (ButtonData *)btn->data;
+    style_t st = data->st;
     if(btn->bits.hover == 1)      st.bg = 3;
-    else if(btn->bits.focus == 1) st.bg = 4;
+    else if(btn->bits.focus == 1) { st.bg = 4; if(data->func) { data->func(data, event); } }
     else                          st.bg = 5;
 
-    canvas_draw((rect_t){ btn->abs_x, btn->abs_y, btn->bounds.w, btn->bounds.h }, data.label, st);
-    if(data.func) { data.func(&data, event); }
+    canvas_draw((rect_t){ btn->abs_x, btn->abs_y, btn->bounds.w, btn->bounds.h }, data->label, st);
     
     btn->bits.focus = 0;
 }
