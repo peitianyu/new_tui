@@ -209,27 +209,22 @@ void canvas_draw(rect_t r_orig, const char *utf8, style_t st) {
 #define SEQ_LEN(x)  (sizeof(x)-1)
 static const char *FG[16] = {
     "\e[30m","\e[34m","\e[35m","\e[32m","\e[31m","\e[90m","\e[37m","\e[97m",
-    "\e[91m","\e[33m","\e[93m","\e[92m","\e[36m","\e[95m","\e[96m","\e[94m"
-};
+    "\e[91m","\e[33m","\e[93m","\e[92m","\e[36m","\e[95m","\e[96m","\e[94m" };
 static const char *BG[16] = {
     "\e[40m","\e[44m","\e[45m","\e[42m","\e[41m","\e[100m","\e[47m","\e[107m",
-    "\e[101m","\e[43m","\e[103m","\e[102m","\e[106m","\e[105m","\e[106m","\e[104m"
-};
+    "\e[101m","\e[43m","\e[103m","\e[102m","\e[106m","\e[105m","\e[106m","\e[104m" };
 static const uint8_t FG_LEN[16] = {       
     SEQ_LEN("\e[30m"),SEQ_LEN("\e[34m"),SEQ_LEN("\e[35m"),SEQ_LEN("\e[32m"),
     SEQ_LEN("\e[31m"),SEQ_LEN("\e[90m"),SEQ_LEN("\e[37m"),SEQ_LEN("\e[97m"),
     SEQ_LEN("\e[91m"),SEQ_LEN("\e[33m"),SEQ_LEN("\e[93m"),SEQ_LEN("\e[92m"),
-    SEQ_LEN("\e[36m"),SEQ_LEN("\e[95m"),SEQ_LEN("\e[96m"),SEQ_LEN("\e[94m")
-};
+    SEQ_LEN("\e[36m"),SEQ_LEN("\e[95m"),SEQ_LEN("\e[96m"),SEQ_LEN("\e[94m") };
 static const uint8_t BG_LEN[16] = {
     SEQ_LEN("\e[40m"),SEQ_LEN("\e[44m"),SEQ_LEN("\e[45m"),SEQ_LEN("\e[42m"),
     SEQ_LEN("\e[41m"),SEQ_LEN("\e[100m"),SEQ_LEN("\e[47m"),SEQ_LEN("\e[107m"),
     SEQ_LEN("\e[101m"),SEQ_LEN("\e[43m"),SEQ_LEN("\e[103m"),SEQ_LEN("\e[102m"),
-    SEQ_LEN("\e[106m"),SEQ_LEN("\e[105m"),SEQ_LEN("\e[106m"),SEQ_LEN("\e[104m")
-};
+    SEQ_LEN("\e[106m"),SEQ_LEN("\e[105m"),SEQ_LEN("\e[106m"),SEQ_LEN("\e[104m") };
 #undef SEQ_LEN
 
-#define MAX_CELL_SIZE (64) // !注意: 渲染应该不超过这个数值
 static inline void render_cell_fast(int idx, char **p, int with_pos) {
     uint32_t cp = g_canvas.buf[idx];
     if (!cp) return;
@@ -261,6 +256,7 @@ static inline void render_cell_fast(int idx, char **p, int with_pos) {
 }
 
 /* ---------- 增量刷新 ---------- */
+#define MAX_CELL_SIZE (64) // !注意: 渲染应该不超过这个数值
 void canvas_flush(void) {
     const int N = g_canvas.w * g_canvas.h;
 
@@ -301,10 +297,10 @@ void canvas_flush_all(void) {
 
     char *ptr = buf;
     for (int y = 0; y < g_canvas.h; ++y) {
-        for (int x = 0; x < g_canvas.w; ++x) {
-            render_cell_fast(y * g_canvas.w + x, &ptr, 0);
-        }
-        *ptr++ = '\n';
+    for (int x = 0; x < g_canvas.w; ++x) {
+        render_cell_fast(y * g_canvas.w + x, &ptr, 0);
+    }
+    *ptr++ = '\n';
     }
 
     fwrite(buf, 1, ptr - buf, stdout);
