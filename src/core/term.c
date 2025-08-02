@@ -3,7 +3,7 @@
 static struct termios g_original_tio;
 void term_restore(void) {
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_original_tio);
-    printf("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1015l\x1b[?1006l\x1b[?25h");
+    printf("\e[?1000l\e[?1002l\e[?1003l\e[?1015l\e[?1006l\e[?25h");
     fflush(stdout);
 }
 
@@ -32,19 +32,19 @@ void term_init(void) {
     tcsetattr(STDIN_FILENO, TCSANOW, &raw);
     tcsetattr(STDIN_FILENO, TCSANOW, &raw);
 
-    printf("\x1b[?1000h\x1b[?1002h\x1b[?1003h\x1b[?1015h\x1b[?1006h\x1b[?25l");
+    printf("\e[?1000h\e[?1002h\e[?1003h\e[?1015h\e[?1006h\e[?25l");
     fflush(stdout);
 
     atexit(term_restore);
 }
 
 void term_clear(void) {
-    printf("\x1b[2J\x1b[H");
+    printf("\e[2J\e[H");
     fflush(stdout);
 }
 
 void term_cursor_show(int show) {
-    printf("%s", show ? "\033[?25h" : "\033[?25l");
+    printf("%s", show ? "\e[?25h" : "\e[?25l");
     fflush(stdout);
 }
 
@@ -56,7 +56,7 @@ int input_ready(int ms) {
 static event_t parse_mouse_event(const char *b, int n) {
     event_t e = {.type = EVENT_MOUSE};
     int btn, x, y; char act;
-    if (sscanf(b, "\x1b[<%d;%d;%d%c", &btn, &x, &y, &act) == 4) {
+    if (sscanf(b, "\e[<%d;%d;%d%c", &btn, &x, &y, &act) == 4) {
         switch (act) {
             case 'M':
                 if (btn >= 32 && btn <= 34) {
@@ -113,7 +113,7 @@ static int utf8_len(unsigned char c) {
 static event_t parse_keyboard_event(const char *b, int n) {
     event_t e = {.type = EVENT_KEY, .key.num = 0};
 
-    if (n >= 3 && b[0] == '\x1b' && b[1] == '[') {
+    if (n >= 3 && b[0] == '\e' && b[1] == '[') {
         e.key.type[0] = KEY_SPECIAL;
         switch (b[2]) {
             case 'A': e.key.key[0] = K_UP;    e.key.num = 1; return e;
@@ -126,19 +126,19 @@ static event_t parse_keyboard_event(const char *b, int n) {
     }
     
     if (n == 4) {
-        if (memcmp(b, "\x1b[3~", 4) == 0) {
+        if (memcmp(b, "\e[3~", 4) == 0) {
             e.key.type[0] = KEY_SPECIAL;
             e.key.key[0] = K_DEL;
             e.key.num = 1;
             return e;
         }
-        if (memcmp(b, "\x1b[5~", 4) == 0) {
+        if (memcmp(b, "\e[5~", 4) == 0) {
             e.key.type[0] = KEY_SPECIAL;
             e.key.key[0] = K_PGUP;
             e.key.num = 1;
             return e;
         }
-        if (memcmp(b, "\x1b[6~", 4) == 0) {
+        if (memcmp(b, "\e[6~", 4) == 0) {
             e.key.type[0] = KEY_SPECIAL;
             e.key.key[0] = K_PGDN;
             e.key.num = 1;
@@ -180,7 +180,7 @@ event_t read_event(void) {
     int n = read(STDIN_FILENO, buf, sizeof(buf));
     if (n <= 0) return (event_t){EVENT_NONE};
 
-    if (n >= 6 && buf[0] == '\x1b' && buf[1] == '[' && buf[2] == '<')
+    if (n >= 6 && buf[0] == '\e' && buf[1] == '[' && buf[2] == '<')
         return parse_mouse_event(buf, n);
 
     return parse_keyboard_event(buf, n);

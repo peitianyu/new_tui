@@ -174,24 +174,17 @@ void tui_scroll(TuiNode *n, int16_t d) {
 }
 /* ---------- 焦点 / 命中测试 ---------- */
 static TuiNode *g_focus = NULL;
-
 static inline bool inside(const TuiNode *n, int16_t x, int16_t y) {
     return x >= n->clip.x && x < n->clip.x + n->clip.w &&
            y >= n->clip.y && y < n->clip.y + n->clip.h;
 }
 
-static void clear_hover_recursive(TuiNode *n) {
+static void clear_focus_recursive(TuiNode *n, bool focus) {
     if (!n) return;
-    n->bits.hover = 0;
+    if(focus) n->bits.focus = 0;
+    else      n->bits.hover = 0;
     for (int i = 0; i < n->kid_cnt; ++i)
-        clear_hover_recursive(n->kids[i]);
-}
-
-static void clear_focus_recursive(TuiNode *n) {
-    if (!n) return;
-    n->bits.focus = 0;
-    for (int i = 0; i < n->kid_cnt; ++i)
-        clear_focus_recursive(n->kids[i]);
+        clear_focus_recursive(n->kids[i], focus);
 }
 
 static TuiNode *hit_recursive(TuiNode *n, int16_t x, int16_t y) {
@@ -208,9 +201,9 @@ static TuiNode *hit_recursive(TuiNode *n, int16_t x, int16_t y) {
 TuiNode *tui_hit_node(TuiNode *root, int16_t mx, int16_t my, int mouse_down) {
     if (!root) return NULL;
     TuiNode *h = hit_recursive(root, mx, my);
-    if(!h) {clear_hover_recursive(root); if(mouse_down) clear_focus_recursive(root); return NULL;}
+    if(!h) {clear_focus_recursive(root, false); if(mouse_down) clear_focus_recursive(root, true); return NULL;}
     if(h->bits.focus == 1) return h;
-    clear_hover_recursive(root);
+    clear_focus_recursive(root, false);
 
     if (h->bits.focusable) {
         if(mouse_down) h->bits.focus = 1;

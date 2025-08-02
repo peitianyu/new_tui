@@ -1,21 +1,35 @@
 #include "render.h"
 
-static canvas_t g_canvas = {0};
-static canvas_t g_last_canvas = {0};
-
 /* ---------- UTF-8 <-> UTF-32 ---------- */
 static inline uint32_t utf8_decode(const char **s) {
     const uint8_t *p = (uint8_t *)(*s);
     uint32_t c;
-    if (*p < 0x80)          { c = *p;          (*s)++; }
+    if (*p < 0x80)             { c = *p;        (*s)++; }
     else if ((*p & 0xE0)==0xC0){ c=((*p&0x1F)<<6)|(p[1]&0x3F); (*s)+=2; }
     else if ((*p & 0xF0)==0xE0){ c=((*p&0x0F)<<12)|((p[1]&0x3F)<<6)|(p[2]&0x3F); (*s)+=3; }
     else if ((*p & 0xF8)==0xF0){ c=((*p&0x07)<<18)|((p[1]&0x3F)<<12)|((p[2]&0x3F)<<6)|(p[3]&0x3F); (*s)+=4; }
-    else { (*s)++; return 0xFFFD; }
+    else                       { (*s)++; return 0xFFFD; }
     return c;
 }
 
-/* ---------- 字宽 ---------- */
+static inline int encode_utf8(uint32_t cp, char buf[4]) {
+    if (cp == 0) return 0;
+    if (cp < 0x80) {
+        buf[0] = (char)cp;
+        return 1;
+    } else if (cp < 0x800) {
+        buf[0] = (char)(0xC0 | (cp >> 6));
+        buf[1] = (char)(0x80 | (cp & 0x3F));
+        return 2;
+    } else if (cp < 0x10000) {
+        buf[0] = (char)(0xE0 | (cp >> 12));
+        buf[1] = (char)(0x80 | ((cp >> 6) & 0x3F));
+        buf[2] = (char)(0x80 | (cp & 0x3F));
+        return 3;
+    }
+    return 0;
+}
+
 static inline int wcwidth_fast(uint32_t cp) {
     return ((cp >= 0x4E00 && cp <= 0x9FFF) ||
             (cp >= 0x3400 && cp <= 0x4DBF) ||
@@ -24,6 +38,8 @@ static inline int wcwidth_fast(uint32_t cp) {
 }
 
 /* ---------- 画布 API ---------- */
+static canvas_t g_canvas = {0};
+static canvas_t g_last_canvas = {0};
 void canvas_init(int w, int h) {
     g_canvas.w = w; g_canvas.h = h;
     g_canvas.buf = calloc(w * h, sizeof(uint32_t));
@@ -55,44 +71,92 @@ static inline rect_t clip(rect_t r) {
 }
 
 /* ---------- 绘制 ---------- */
-void canvas_draw(rect_t r_orig, const char *utf8, style_t st) {
-    rect_t r = clip(r_orig);
-    if (r.w <= 0 || r.h <= 0) return;
+/* 1. 背景填充 ------------------------------------------------------------- */
+static void draw_rect(rect_t r_clip, style_t st) {
+    if (!st.rect) return;
 
-    /* 背景填充 */
-    if (st.rect) {
-        for (int y = r.y; y < r.y + r.h; ++y)
-        for (int x = r.x; x < r.x + r.w; ++x) {
-            int i = y * g_canvas.w + x;
-            g_canvas.sty[i] = st;
-            g_canvas.buf[i] = ' ';
-        }
+    for (int y = r_clip.y; y < r_clip.y + r_clip.h; ++y)
+    for (int x = r_clip.x; x < r_clip.x + r_clip.w; ++x) {
+        int i = y * g_canvas.w + x;
+        g_canvas.sty[i] = st;
+        g_canvas.buf[i] = ' ';
+    }
+}
+
+/* 2. 边框 ----------------------------------------------------------------- */
+typedef enum {
+    BORDER_LIGHT=0, /* ─ │ ┌ ┐ └ ┘ */
+    BORDER_HEAVY,   /* ═ ║ ╔ ╗ ╚ ╝ */
+    BORDER_DASHED,  /* ┄ ┆ ┌ ┐ └ ┘ */
+    BORDER_ROUND,   /* ─ │ ╭ ╮ ╰ ╯ */
+} border_style_t;
+
+typedef struct {
+    uint32_t horz, vert, tl, tr, bl, br;
+} border_chars_t;
+
+static const border_chars_t g_border_tbl[] = {
+    [BORDER_LIGHT]  = {0x2500, 0x2502, 0x250C, 0x2510, 0x2514, 0x2518},
+    [BORDER_HEAVY]  = {0x2550, 0x2551, 0x2554, 0x2557, 0x255A, 0x255D},
+    [BORDER_DASHED] = {0x2504, 0x2506, 0x250C, 0x2510, 0x2514, 0x2518},
+    [BORDER_ROUND]  = {0x2500, 0x2502, 0x256D, 0x256E, 0x2570, 0x256F},
+};
+
+static void draw_border(rect_t r, style_t st) {
+    if (!st.border || r.w < 2 || r.h < 2) return;
+
+    int x0 = r.x, y0 = r.y;
+    int x1 = x0 + r.w - 1, y1 = y0 + r.h - 1;
+    if (x0 < 0 || x1 >= g_canvas.w || y0 < 0 || y1 >= g_canvas.h) return;
+
+    const int stride = g_canvas.w;
+    uint32_t *restrict buf = g_canvas.buf;
+    style_t  *restrict sty = g_canvas.sty;
+
+    /* 取出当前样式字符 */
+    int bs = (bs >= sizeof(g_border_tbl)/sizeof(g_border_tbl[0])) ? BORDER_LIGHT : st.border_st;
+    const border_chars_t b = g_border_tbl[bs];
+
+    /* 四个角 */
+    buf[y0 * stride + x0] = b.tl;
+    buf[y0 * stride + x1] = b.tr;
+    buf[y1 * stride + x0] = b.bl;
+    buf[y1 * stride + x1] = b.br;
+
+    /* 上边和下边 */
+    for (int x = x0 + 1; x < x1; ++x) {
+        const int top = y0 * stride + x;
+        const int bot = y1 * stride + x;
+        buf[top] = b.horz; sty[top] = st;
+        buf[bot] = b.horz; sty[bot] = st;
     }
 
-    /* 边框 */
-    if (st.border && r_orig.w >= 2 && r_orig.h >= 2) {
-        int x0 = r_orig.x, y0 = r_orig.y, x1 = x0 + r_orig.w - 1, y1 = y0 + r_orig.h - 1;
-        if (x0 < 0 || x1 >= g_canvas.w || y0 < 0 || y1 >= g_canvas.h) goto skip_border; 
-        for (int x = x0; x <= x1; ++x) { g_canvas.buf[y0*g_canvas.w+x] = 0x2500; g_canvas.sty[y0*g_canvas.w+x]=st; 
-                                         g_canvas.buf[y1*g_canvas.w+x]=0x2500; g_canvas.sty[y1*g_canvas.w+x]=st; }
-        for (int y = y0; y <= y1; ++y) { g_canvas.buf[y*g_canvas.w+x0]=0x2502; g_canvas.sty[y*g_canvas.w+x0]=st; 
-                                         g_canvas.buf[y*g_canvas.w+x1]=0x2502; g_canvas.sty[y*g_canvas.w+x1]=st; }
-        g_canvas.buf[y0*g_canvas.w+x0]=0x250C; g_canvas.buf[y0*g_canvas.w+x1]=0x2510;
-        g_canvas.buf[y1*g_canvas.w+x0]=0x2514; g_canvas.buf[y1*g_canvas.w+x1]=0x2518;
-    skip_border:;
+    /* 左边和右边 */
+    for (int y = y0 + 1; y < y1; ++y) {
+        const int lef = y * stride + x0;
+        const int rig = y * stride + x1;
+        buf[lef] = b.vert; sty[lef] = st;
+        buf[rig] = b.vert; sty[rig] = st;
     }
+}
 
+/* 3. 文本 ----------------------------------------------------------------- */
+static void draw_text(rect_t r_orig, const char *utf8, style_t st) {
     if (!st.text || !utf8) return;
 
     /* 可用区域 */
     int bw = st.border ? 1 : 0;
-    int x0 = r.x + bw, y0 = r.y + bw;
-    int usable_w = r_orig.w - 2 * bw, usable_h = r_orig.h - 2 * bw;
+    int usable_w = r_orig.w - 2 * bw;
+    int usable_h = r_orig.h - 2 * bw;
     if (usable_w <= 0 || usable_h <= 0) return;
+
+    int x0 = r_orig.x + bw;
+    int y0 = r_orig.y + bw;
 
     /* 统计行 */
     typedef struct { const char *s; int w; } line_t;
-    line_t lines[64]; int n = 0;
+    line_t lines[64];
+    int n = 0;
     for (const char *p = utf8; *p && n < 64;) {
         lines[n].s = p;
         lines[n].w = 0;
@@ -107,13 +171,13 @@ void canvas_draw(rect_t r_orig, const char *utf8, style_t st) {
     /* 垂直偏移 */
     int start_y = y0;
     if (st.align_vert == 1) start_y += (usable_h - n) / 2;
-    if (st.align_vert == 2) start_y +=  usable_h - n;
+    if (st.align_vert == 2) start_y += (usable_h - n);
 
     /* 逐行绘制 */
     for (int ly = 0; ly < n && start_y + ly < y0 + usable_h; ++ly) {
         int start_x = x0;
         if (st.align_horz == 1) start_x += (usable_w - lines[ly].w) / 2;
-        if (st.align_horz == 2) start_x +=  usable_w - lines[ly].w;
+        if (st.align_horz == 2) start_x += (usable_w - lines[ly].w);
 
         const char *p = lines[ly].s;
         int cx = start_x;
@@ -122,11 +186,9 @@ void canvas_draw(rect_t r_orig, const char *utf8, style_t st) {
             int cw = wcwidth_fast(cp);
             if (cx >= x0 && cx < x0 + usable_w && start_y + ly < y0 + usable_h) {
                 int i = (start_y + ly) * g_canvas.w + cx;
-                g_canvas.buf[i] = cp;
-                g_canvas.sty[i] = st;
+                g_canvas.buf[i] = cp; g_canvas.sty[i] = st;
                 if (cw == 2 && cx + 1 < x0 + usable_w) {
-                    g_canvas.buf[i + 1] = 0;
-                    g_canvas.sty[i + 1] = st;
+                    g_canvas.buf[i + 1] = 0; g_canvas.sty[i + 1] = st;
                 }
             }
             cx += cw;
@@ -134,59 +196,40 @@ void canvas_draw(rect_t r_orig, const char *utf8, style_t st) {
     }
 }
 
+void canvas_draw(rect_t r_orig, const char *utf8, style_t st) {
+    rect_t r = clip(r_orig);
+    if (r.w <= 0 || r.h <= 0) return;
+
+    draw_rect(r, st);           /* 1. 背景 */
+    draw_border(r_orig, st);    /* 2. 边框 */
+    draw_text(r_orig, utf8, st);/* 3. 文本 */
+}
+
 /* ---------- 终端输出 ---------- */
 #define SEQ_LEN(x)  (sizeof(x)-1)
-
 static const char *FG[16] = {
-    "\033[30m","\033[34m","\033[35m","\033[32m","\033[31m","\033[90m","\033[37m","\033[97m",
-    "\033[91m","\033[33m","\033[93m","\033[92m","\033[36m","\033[95m","\033[96m","\033[94m"
+    "\e[30m","\e[34m","\e[35m","\e[32m","\e[31m","\e[90m","\e[37m","\e[97m",
+    "\e[91m","\e[33m","\e[93m","\e[92m","\e[36m","\e[95m","\e[96m","\e[94m"
 };
 static const char *BG[16] = {
-    "\033[40m","\033[44m","\033[45m","\033[42m","\033[41m","\033[100m","\033[47m","\033[107m",
-    "\033[101m","\033[43m","\033[103m","\033[102m","\033[106m","\033[105m","\033[106m","\033[104m"
+    "\e[40m","\e[44m","\e[45m","\e[42m","\e[41m","\e[100m","\e[47m","\e[107m",
+    "\e[101m","\e[43m","\e[103m","\e[102m","\e[106m","\e[105m","\e[106m","\e[104m"
 };
-
-static const uint8_t FG_LEN[16] = {       // 预存长度，省一次 sizeof
-    SEQ_LEN("\033[30m"),SEQ_LEN("\033[34m"),SEQ_LEN("\033[35m"),SEQ_LEN("\033[32m"),
-    SEQ_LEN("\033[31m"),SEQ_LEN("\033[90m"),SEQ_LEN("\033[37m"),SEQ_LEN("\033[97m"),
-    SEQ_LEN("\033[91m"),SEQ_LEN("\033[33m"),SEQ_LEN("\033[93m"),SEQ_LEN("\033[92m"),
-    SEQ_LEN("\033[36m"),SEQ_LEN("\033[95m"),SEQ_LEN("\033[96m"),SEQ_LEN("\033[94m")
+static const uint8_t FG_LEN[16] = {       
+    SEQ_LEN("\e[30m"),SEQ_LEN("\e[34m"),SEQ_LEN("\e[35m"),SEQ_LEN("\e[32m"),
+    SEQ_LEN("\e[31m"),SEQ_LEN("\e[90m"),SEQ_LEN("\e[37m"),SEQ_LEN("\e[97m"),
+    SEQ_LEN("\e[91m"),SEQ_LEN("\e[33m"),SEQ_LEN("\e[93m"),SEQ_LEN("\e[92m"),
+    SEQ_LEN("\e[36m"),SEQ_LEN("\e[95m"),SEQ_LEN("\e[96m"),SEQ_LEN("\e[94m")
 };
 static const uint8_t BG_LEN[16] = {
-    SEQ_LEN("\033[40m"),SEQ_LEN("\033[44m"),SEQ_LEN("\033[45m"),SEQ_LEN("\033[42m"),
-    SEQ_LEN("\033[41m"),SEQ_LEN("\033[100m"),SEQ_LEN("\033[47m"),SEQ_LEN("\033[107m"),
-    SEQ_LEN("\033[101m"),SEQ_LEN("\033[43m"),SEQ_LEN("\033[103m"),SEQ_LEN("\033[102m"),
-    SEQ_LEN("\033[106m"),SEQ_LEN("\033[105m"),SEQ_LEN("\033[106m"),SEQ_LEN("\033[104m")
+    SEQ_LEN("\e[40m"),SEQ_LEN("\e[44m"),SEQ_LEN("\e[45m"),SEQ_LEN("\e[42m"),
+    SEQ_LEN("\e[41m"),SEQ_LEN("\e[100m"),SEQ_LEN("\e[47m"),SEQ_LEN("\e[107m"),
+    SEQ_LEN("\e[101m"),SEQ_LEN("\e[43m"),SEQ_LEN("\e[103m"),SEQ_LEN("\e[102m"),
+    SEQ_LEN("\e[106m"),SEQ_LEN("\e[105m"),SEQ_LEN("\e[106m"),SEQ_LEN("\e[104m")
 };
-
 #undef SEQ_LEN
 
-/* ---------------------------------------- */
-static inline int pos_seq_len(int y, int x) {
-    char tmp[32];
-    return sprintf(tmp, "\033[%d;%dH", y, x);
-}
-
-// 统一字符编码处理
-static inline int encode_utf8(uint32_t cp, char buf[4]) {
-    if (cp == 0) return 0;
-    if (cp < 0x80) {
-        buf[0] = (char)cp;
-        return 1;
-    } else if (cp < 0x800) {
-        buf[0] = (char)(0xC0 | (cp >> 6));
-        buf[1] = (char)(0x80 | (cp & 0x3F));
-        return 2;
-    } else if (cp < 0x10000) {
-        buf[0] = (char)(0xE0 | (cp >> 12));
-        buf[1] = (char)(0x80 | ((cp >> 6) & 0x3F));
-        buf[2] = (char)(0x80 | (cp & 0x3F));
-        return 3;
-    }
-    return 0;
-}
-
-/* ---------- 统一渲染单元 ---------- */
+#define MAX_CELL_SIZE (64) // !注意: 渲染应该不超过这个数值
 static inline void render_cell_fast(int idx, char **p, int with_pos) {
     uint32_t cp = g_canvas.buf[idx];
     if (!cp) return;
@@ -200,13 +243,19 @@ static inline void render_cell_fast(int idx, char **p, int with_pos) {
     if (with_pos) {
         int y = idx / g_canvas.w + 1;
         int x = idx % g_canvas.w + 1;
-        dst += sprintf(dst, "\033[%d;%dH", y, x);
+        dst += sprintf(dst, "\e[%d;%dH", y, x);
     }
 
+    if (st.italic)    { memcpy(dst, "\e[3m", 4);  dst += 4; }
+    if (st.underline) { memcpy(dst, "\e[4m", 4);  dst += 4; }
+    if (st.bold)      { memcpy(dst, "\e[1m", 4);  dst += 4; }
+    if (st.strike)    { memcpy(dst, "\e[9m", 4);  dst += 4; }
+    
+    int fg = (st.border) ? st.border_fg : st.fg;
+    memcpy(dst, FG[fg], FG_LEN[fg]);       dst += FG_LEN[fg];
     memcpy(dst, BG[st.bg], BG_LEN[st.bg]); dst += BG_LEN[st.bg];
-    memcpy(dst, FG[st.fg], FG_LEN[st.fg]); dst += FG_LEN[st.fg];
     memcpy(dst, ch, ch_len);               dst += ch_len;
-    memcpy(dst, "\033[0m", 4);             dst += 4;
+    memcpy(dst, "\e[0m", 4);               dst += 4;
 
     *p = dst;
 }
@@ -215,45 +264,30 @@ static inline void render_cell_fast(int idx, char **p, int with_pos) {
 void canvas_flush(void) {
     const int N = g_canvas.w * g_canvas.h;
 
-    /* 先粗估变化单元数，预留空间：平均 40 字节/格 */
     int changes = 0;
     for (int i = 0; i < N; ++i) {
-        if (g_canvas.buf[i] != g_last_canvas.buf[i] ||
-            g_canvas.sty[i].v != g_last_canvas.sty[i].v)
-            ++changes;
+        changes += (g_canvas.buf[i] != g_last_canvas.buf[i] || g_canvas.sty[i].v != g_last_canvas.sty[i].v);
     }
-
-    printf(g_canvas.cursor.cursor_able ? "\033[?25h" : "\033[?25l");
-    printf("\033[%d q\033[%d;%dH", g_canvas.cursor.st, g_canvas.cursor.y + 1, g_canvas.cursor.x + 1);
-    fflush(stdout);
-
     if (!changes) return;
 
-    size_t cap = changes * 64;         
+    size_t cap = changes * MAX_CELL_SIZE;         
     char *buf  = malloc(cap);
     if (!buf) return;
 
     char *ptr = buf;
     for (int i = 0; i < N; ++i) {
-        if (g_canvas.buf[i] == g_last_canvas.buf[i] &&
-            g_canvas.sty[i].v == g_last_canvas.sty[i].v) continue;
-
-        if ((size_t)(ptr - buf) + 64 > cap) {
-            cap *= 2;
-            char *tmp = realloc(buf, cap);
-            if (!tmp) { free(buf); return; }
-            ptr = tmp + (ptr - buf);
-            buf = tmp;
-        }
-
+        if (g_canvas.buf[i] == g_last_canvas.buf[i] && g_canvas.sty[i].v == g_last_canvas.sty[i].v) continue;
         render_cell_fast(i, &ptr, 1);
     }
+
+    printf("\e[?25l");
     fwrite(buf, 1, ptr - buf, stdout);
-    printf("\033[%d q\033[%d;%dH", g_canvas.cursor.st, g_canvas.cursor.y + 1, g_canvas.cursor.x + 1);
+    if(g_canvas.cursor.cursor_able) 
+        printf("\e[?25h\e[%d q\e[%d;%dH", g_canvas.cursor.st, g_canvas.cursor.y, g_canvas.cursor.x);
     fflush(stdout);
+    
     free(buf);
 
-    /* 更新历史 */
     memcpy(g_last_canvas.buf, g_canvas.buf, N * sizeof(uint32_t));
     memcpy(g_last_canvas.sty, g_canvas.sty, N * sizeof(style_t));
 }
@@ -261,15 +295,14 @@ void canvas_flush(void) {
 /* ---------- 全量刷新 ---------- */
 void canvas_flush_all(void) {
     const int N = g_canvas.w * g_canvas.h;
-    size_t cap = N * 40 + g_canvas.h;
+    size_t cap = N * MAX_CELL_SIZE + g_canvas.h;
     char  *buf = malloc(cap);
     if (!buf) return;
 
     char *ptr = buf;
     for (int y = 0; y < g_canvas.h; ++y) {
         for (int x = 0; x < g_canvas.w; ++x) {
-            int idx = y * g_canvas.w + x;
-            render_cell_fast(idx, &ptr, 0);
+            render_cell_fast(y * g_canvas.w + x, &ptr, 0);
         }
         *ptr++ = '\n';
     }
@@ -282,12 +315,13 @@ void canvas_flush_all(void) {
     memcpy(g_last_canvas.sty, g_canvas.sty, N * sizeof(style_t));
 }
 
-void canvas_rest_cursor(void) {
-    g_canvas.cursor.cursor_able = 0;
-}
-void canvas_cursor_move(int cusr_able, int x, int y, int style) {
-    g_canvas.cursor.cursor_able = cusr_able;
+void canvas_cursor_move(int x, int y, int style) {
+    g_canvas.cursor.cursor_able = 1;
     g_canvas.cursor.x = x;
     g_canvas.cursor.y = y;
     g_canvas.cursor.st = style;
+}
+
+void canvas_cursor_hide(void) {
+    g_canvas.cursor.cursor_able = 0;
 }
