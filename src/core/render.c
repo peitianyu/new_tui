@@ -1,42 +1,5 @@
 #include "render.h"
 
-/* ---------- UTF-8 <-> UTF-32 ---------- */
-static inline uint32_t utf8_decode(const char **s) {
-    const uint8_t *p = (uint8_t *)(*s);
-    uint32_t c;
-    if (*p < 0x80)             { c = *p;        (*s)++; }
-    else if ((*p & 0xE0)==0xC0){ c=((*p&0x1F)<<6)|(p[1]&0x3F); (*s)+=2; }
-    else if ((*p & 0xF0)==0xE0){ c=((*p&0x0F)<<12)|((p[1]&0x3F)<<6)|(p[2]&0x3F); (*s)+=3; }
-    else if ((*p & 0xF8)==0xF0){ c=((*p&0x07)<<18)|((p[1]&0x3F)<<12)|((p[2]&0x3F)<<6)|(p[3]&0x3F); (*s)+=4; }
-    else                       { (*s)++; return 0xFFFD; }
-    return c;
-}
-
-static inline int encode_utf8(uint32_t cp, char buf[4]) {
-    if (cp == 0) return 0;
-    if (cp < 0x80) {
-        buf[0] = (char)cp;
-        return 1;
-    } else if (cp < 0x800) {
-        buf[0] = (char)(0xC0 | (cp >> 6));
-        buf[1] = (char)(0x80 | (cp & 0x3F));
-        return 2;
-    } else if (cp < 0x10000) {
-        buf[0] = (char)(0xE0 | (cp >> 12));
-        buf[1] = (char)(0x80 | ((cp >> 6) & 0x3F));
-        buf[2] = (char)(0x80 | (cp & 0x3F));
-        return 3;
-    }
-    return 0;
-}
-
-static inline int wcwidth_fast(uint32_t cp) {
-    return ((cp >= 0x4E00 && cp <= 0x9FFF) ||
-            (cp >= 0x3400 && cp <= 0x4DBF) ||
-            (cp >= 0xF900 && cp <= 0xFAFF) ||
-            (cp >= 0xFF01 && cp <= 0xFF5E)) ? 2 : 1;
-}
-
 /* ---------- 画布 API ---------- */
 static canvas_t g_canvas = {0};
 static canvas_t g_last_canvas = {0};
@@ -162,7 +125,7 @@ static void draw_text(rect_t r_orig, const char *utf8, style_t st) {
         lines[n].w = 0;
         while (*p && *p != '\n') {
             uint32_t cp = utf8_decode(&p);
-            lines[n].w += wcwidth_fast(cp);
+            lines[n].w += utf8_width(cp);
         }
         ++n;
         if (*p == '\n') ++p;
@@ -183,7 +146,7 @@ static void draw_text(rect_t r_orig, const char *utf8, style_t st) {
         int cx = start_x;
         while (*p && *p != '\n') {
             uint32_t cp = utf8_decode(&p);
-            int cw = wcwidth_fast(cp);
+            int cw = utf8_width(cp);
             if (cx >= x0 && cx < x0 + usable_w && start_y + ly < y0 + usable_h) {
                 int i = (start_y + ly) * g_canvas.w + cx;
                 g_canvas.buf[i] = cp; g_canvas.sty[i] = st;
@@ -231,7 +194,7 @@ static inline void render_cell_fast(int idx, char **p, int with_pos) {
 
     style_t st = g_canvas.sty[idx];
     char  ch[4];
-    int   ch_len = encode_utf8(cp, ch);
+    int   ch_len = utf8_encode(cp, ch);
     if (!ch_len) return;
 
     char *dst = *p;

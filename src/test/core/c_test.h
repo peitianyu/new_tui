@@ -3,6 +3,7 @@
 
 void Tester_Is(char* name, int line, int x, char* msg);
 
+#define ASSERT(x, msg) Tester_Is(__FILE__, __LINE__, (x), #x ":" msg)
 #define ASSERT_TRUE(x) Tester_Is(__FILE__, __LINE__, (x), #x)
 #define ASSERT_FALSE(x) Tester_Is(__FILE__, __LINE__, !(x), #x)
 #define ASSERT_EQ(a, b) Tester_Is(__FILE__, __LINE__, (a) == (b), #a " == " #b)

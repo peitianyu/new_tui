@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "utf8.h"
 
 typedef struct { int x, y, w, h; } rect_t;
 
