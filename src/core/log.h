@@ -2,6 +2,7 @@
 #define __LOG_H__
 
 #include <stdio.h>
+#include <stdarg.h>
 
 static inline void log_print(const char *fmt, ...)
 {

@@ -261,9 +261,8 @@ void canvas_flush(void) {
     const int N = g_canvas.w * g_canvas.h;
 
     int changes = 0;
-    for (int i = 0; i < N; ++i) {
+    for (int i = 0; i < N; ++i) 
         changes += (g_canvas.buf[i] != g_last_canvas.buf[i] || g_canvas.sty[i].v != g_last_canvas.sty[i].v);
-    }
     if (!changes) return;
 
     size_t cap = changes * MAX_CELL_SIZE;         
@@ -281,7 +280,6 @@ void canvas_flush(void) {
     if(g_canvas.cursor.cursor_able) 
         printf("\e[?25h\e[%d q\e[%d;%dH", g_canvas.cursor.st, g_canvas.cursor.y, g_canvas.cursor.x);
     fflush(stdout);
-    
     free(buf);
 
     memcpy(g_last_canvas.buf, g_canvas.buf, N * sizeof(uint32_t));
