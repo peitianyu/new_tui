@@ -30,6 +30,7 @@ static void print_event(const event_t *e) {
                 const char *name = keyname(k);
                 if (name) {                   debug_print("【%s】 ", name);
                 } else if (k > 0 && k < 32) { debug_print("【Ctrl+%c】 ", 'A' + k - 1);
+                } else if (k > 0xF8000) {     debug_print("【Alt+%c】", k - 0xF8000);
                 } else {                      debug_print("【0x%02X】 ", k); }
             } else { /* KEY_NORMAL */
                 unsigned char bytes[5] = {0};

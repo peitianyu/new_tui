@@ -28,6 +28,7 @@
 #define K_PGUP      0xF0018
 #define K_PGDN      0xF0019
 #define CTRL_KEY(k) ((k) & 0x1f)
+#define ALT_KEY(k)  ((k) | 0xF8000)
 
 typedef enum { KEY_SPECIAL, KEY_NORMAL } key_type_t;
 typedef struct {

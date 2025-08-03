@@ -110,8 +110,16 @@ static int utf8_len(unsigned char c) {
     return 1;
 }
 
+#include "log.h"
 static event_t parse_keyboard_event(const char *b, int n) {
     event_t e = {.type = EVENT_KEY, .key.num = 0};
+
+    if (n == 2 && b[0] == '\e') {
+        e.key.type[0] = KEY_SPECIAL;
+        e.key.key[0] = 0xF8000 | b[1];
+        e.key.num = 1;
+        return e;
+    }
 
     if (n >= 3 && b[0] == '\e' && b[1] == '[') {
         e.key.type[0] = KEY_SPECIAL;
