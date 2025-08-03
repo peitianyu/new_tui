@@ -6,15 +6,6 @@
 #include "term.h"
 #include "log.h"
 
-static inline TuiNode *creat_root_node(void) {
-    int w, h; term_size(&w, &h);
-    term_init();
-    term_clear();
-    canvas_init(w, h);
-
-    return tui_node_new(0, 0, w, h);
-}
-
 typedef struct ButtonData ButtonData;
 struct ButtonData {
     char *label;
