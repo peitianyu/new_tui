@@ -30,11 +30,12 @@
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define ALT_KEY(k)  ((k) | 0xF8000)
 
+#define MAX_KEY_LEN (32)
 typedef enum { KEY_SPECIAL, KEY_NORMAL } key_type_t;
 typedef struct {
     int         num;
-    key_type_t  type[32];
-    int         key[32];
+    key_type_t  type[MAX_KEY_LEN];
+    int         key[MAX_KEY_LEN];
 } key_event_t;
 
 /* ---------------- 鼠标 ---------------- */
@@ -63,6 +64,5 @@ void term_size(int *width, int *height);
 
 int input_ready(int ms);
 event_t read_event(void);
-
 
 #endif // __TERM_H__

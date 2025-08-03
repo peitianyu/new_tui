@@ -61,8 +61,7 @@ static event_t parse_mouse_event(const char *b, int n) {
             case 'M':
                 if (btn >= 32 && btn <= 34) {
                     e.mouse.type = MOUSE_DRAG;
-                    e.mouse.button = (btn == 32) ? MOUSE_LEFT :
-                                     (btn == 33) ? MOUSE_MIDDLE : MOUSE_RIGHT;
+                    e.mouse.button = (btn == 32) ? MOUSE_LEFT : (btn == 33) ? MOUSE_MIDDLE : MOUSE_RIGHT;
                 } else if (btn == 35) {
                     e.mouse.type = MOUSE_HOVER; e.mouse.button = MOUSE_NONE;
                 } else if (btn == 64 || btn == 65) {
@@ -71,14 +70,12 @@ static event_t parse_mouse_event(const char *b, int n) {
                     e.mouse.button = MOUSE_NONE;
                 } else if (btn >= 0 && btn <= 2) {
                     e.mouse.type = MOUSE_PRESS;
-                    e.mouse.button = (btn == 0) ? MOUSE_LEFT :
-                                     (btn == 1) ? MOUSE_MIDDLE : MOUSE_RIGHT;
+                    e.mouse.button = (btn == 0) ? MOUSE_LEFT : (btn == 1) ? MOUSE_MIDDLE : MOUSE_RIGHT;
                 } else return (event_t){EVENT_NONE};
                 break;
             case 'm':
                 e.mouse.type = MOUSE_RELEASE;
-                e.mouse.button = (btn == 0) ? MOUSE_LEFT :
-                                 (btn == 1) ? MOUSE_MIDDLE : MOUSE_RIGHT;
+                e.mouse.button = (btn == 0) ? MOUSE_LEFT : (btn == 1) ? MOUSE_MIDDLE : MOUSE_RIGHT;
                 break;
             default: return (event_t){EVENT_NONE};
         }
@@ -102,6 +99,7 @@ static int is_utf8_start(unsigned char c) {
     return (c & 0x80) == 0 || (c & 0xE0) == 0xC0 ||
            (c & 0xF0) == 0xE0 || (c & 0xF8) == 0xF0;
 }
+
 static int utf8_len(unsigned char c) {
     if ((c & 0x80) == 0) return 1;
     if ((c & 0xE0) == 0xC0) return 2;
@@ -110,7 +108,6 @@ static int utf8_len(unsigned char c) {
     return 1;
 }
 
-#include "log.h"
 static event_t parse_keyboard_event(const char *b, int n) {
     event_t e = {.type = EVENT_KEY, .key.num = 0};
 
@@ -155,7 +152,7 @@ static event_t parse_keyboard_event(const char *b, int n) {
     }
 
     int pos = 0;
-    while (pos < n && e.key.num < 32) {
+    while (pos < n && e.key.num < MAX_KEY_LEN) {
         unsigned char c = b[pos];
 
         if (c <= 0x1F || c == 0x7F) {
@@ -187,7 +184,6 @@ event_t read_event(void) {
     char buf[256];
     int n = read(STDIN_FILENO, buf, sizeof(buf));
     if (n <= 0) return (event_t){EVENT_NONE};
-
     if (n >= 6 && buf[0] == '\e' && buf[1] == '[' && buf[2] == '<')
         return parse_mouse_event(buf, n);
 
