@@ -27,8 +27,6 @@ static void button_draw(TuiNode *btn, void *event) {
     if (!btn) return;
     
     ButtonData *data = (ButtonData *)btn->data;
-    if(data->no_changed && btn->bits.focus == 0 && btn->bits.hover == 0) { return; }
-    data->no_changed = 1;
 
     style_t st = data->st;
     if(btn->bits.hover == 1)      { data->hover_func(data); }

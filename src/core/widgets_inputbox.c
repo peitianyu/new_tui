@@ -27,9 +27,6 @@ TuiNode *inputbox_new(TuiRect r, InputBoxData *d) {
 static void inputbox_draw(TuiNode *ib, void *event) {
     InputBoxData *d = (InputBoxData *)ib->data;
     style_t st = d->st;
-    if(d->no_changed && ib->bits.focus == 0) { return; }
-    d->no_changed = 1;
-
     if (ib->bits.focus) { inputbox_focus(d, ib, event); if(d->func) d->func(d); st = d->st_focus; }
 
     /* 可视宽度（减去边框） */
