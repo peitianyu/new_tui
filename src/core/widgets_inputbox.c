@@ -10,6 +10,7 @@ static void inputbox_func(InputBoxData *d) {}
 TuiNode *inputbox_new(TuiRect r, InputBoxData *d) {
     TuiNode *n = tui_node_new(r.x, r.y, r.w, r.h);
     n->bits.focusable = 1;
+    if(d->func == NULL) d->func = inputbox_func;
     n->data = d;
     n->draw = inputbox_draw;
 
@@ -23,7 +24,6 @@ TuiNode *inputbox_new(TuiRect r, InputBoxData *d) {
     return n;
 }
 
-/* ----------------------------- 绘制 -------------------------------- */
 static void inputbox_draw(TuiNode *ib, void *event) {
     InputBoxData *d = (InputBoxData *)ib->data;
     style_t st = d->st;
@@ -67,7 +67,6 @@ static void inputbox_draw(TuiNode *ib, void *event) {
     canvas_cursor_move(cursor_scr_x+1, cursor_scr_y+1, 1);
 }
 
-/* ----------------------------- 编辑操作 ---------------------------- */
 static void inputbox_insert_char(InputBoxData *d, uint32_t ch) {
     if (d->len + 4 >= d->cap) {
         d->cap *= 2;
@@ -75,60 +74,39 @@ static void inputbox_insert_char(InputBoxData *d, uint32_t ch) {
     }
     char tmp[4];
     int bytes = utf8_encode(ch, tmp);
-    if (!bytes) { return; }
+    if (!bytes) return;
 
     memmove(d->text + d->cursor + bytes, d->text + d->cursor, d->len - d->cursor + 1);
     memcpy(d->text + d->cursor, tmp, bytes);
     d->cursor += bytes;
-    d->len += bytes;
+    d->len    += bytes;
 }
 
 static void inputbox_backspace(InputBoxData *d) {
-    if (d->cursor == 0) { return; }
+    if (d->cursor == 0) return;
 
-    const char *p = d->text;
-    const char *prev = p;
-    while (p < d->text + d->cursor) {
-        prev = p;
-        utf8_decode(&p);
-    }
-
-    size_t step = (d->text + d->cursor) - prev;
-    if (step > d->cursor) { return; }
-
-    memmove(d->text + d->cursor - step, d->text + d->cursor, d->len - d->cursor + 1);
-    d->cursor -= step;
-    d->len -= step;
+    size_t prev = utf8_prev(d->text, d->cursor);
+    size_t step = d->cursor - prev;
+    memmove(d->text + prev, d->text + d->cursor, d->len - d->cursor + 1);
+    d->cursor = prev;
+    d->len   -= step;
 }
 
 static void inputbox_delete(InputBoxData *d) {
-    if (d->cursor >= d->len) { return; }
-    const char *next = d->text + d->cursor;
-    utf8_decode(&next);
-    size_t step = next - (d->text + d->cursor);
-    memmove(d->text + d->cursor, d->text + d->cursor + step, d->len - d->cursor - step + 1);
+    if (d->cursor >= d->len) return;
+
+    size_t next = utf8_advance(d->text, d->cursor, 1);
+    size_t step = next - d->cursor;
+    memmove(d->text + d->cursor, d->text + next, d->len - next + 1);
     d->len -= step;
 }
 
 static void inputbox_move_cursor(InputBoxData *d, int dir) {
     if (dir < 0 && d->cursor > 0) {
-        const char *p = d->text;
-        size_t prev_pos = 0;
-        while (p < d->text + d->cursor) {
-            prev_pos = p - d->text;
-            utf8_decode(&p);
-        }
-        d->cursor = prev_pos;
+        d->cursor = utf8_prev(d->text, d->cursor);
     } else if (dir > 0 && d->cursor < d->len) {
-        const char *next = d->text + d->cursor;
-        utf8_decode(&next);
-        d->cursor = next - d->text;
+        d->cursor = utf8_advance(d->text, d->cursor, 1);
     }
-}
-
-static void inputbox_clear_line(InputBoxData *d) {
-    d->text[0] = '\0';
-    d->len = d->cursor = 0;
 }
 
 /* ----------------------------- 事件处理 ---------------------------- */
@@ -148,7 +126,6 @@ static void inputbox_focus(InputBoxData *d, TuiNode* ib, void *event) {
                     case K_RIGHT:     inputbox_move_cursor(d,  1); break;
                     case K_HOME:      d->cursor = 0; break;
                     case K_END:       d->cursor = d->len; break;
-                    case CTRL_KEY('U'): inputbox_clear_line(d); break;
                 }
             } else {
                 inputbox_insert_char(d, k->key[i]);
@@ -157,19 +134,12 @@ static void inputbox_focus(InputBoxData *d, TuiNode* ib, void *event) {
     } else if (ev->type == EVENT_MOUSE && ev->mouse.type == MOUSE_PRESS) {
         int bw = d->st.border ? 1 : 0;
         int vis_w = ib->bounds.w - 2 * bw;
+
         int click_col = ev->mouse.x - ib->abs_x - bw + d->scroll_x;
         if (click_col < 0) click_col = 0;
-    
-        const char *p = d->text;
-        int col = 0;
-        size_t pos = 0;
-        while (*p) {
-            uint32_t cp = utf8_decode(&p);
-            int w = utf8_width(cp);
-            if (col + w > click_col) break;
-            col += w;
-            pos = p - d->text;
-        }
-        d->cursor = pos;
+
+        size_t byte_off = utf8_advance(d->text, 0, click_col);
+        if (byte_off > d->len) byte_off = d->len;
+        d->cursor = byte_off;
     }
 }

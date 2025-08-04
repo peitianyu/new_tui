@@ -3,7 +3,7 @@
 #include "core/utf8.h"
 #include "core/c_test.h"
 
-/* ---------- 1. 解码正确性 ---------- */
+/* ---------- 解码正确性 ---------- */
 static void test_decode(void)
 {
     const struct {
@@ -43,7 +43,7 @@ static void test_decode(void)
     }
 }
 
-/* ---------- 2. 编码正确性 ---------- */
+/* ---------- 编码正确性 ---------- */
 static void test_encode(void)
 {
     const struct {
@@ -64,7 +64,7 @@ static void test_encode(void)
     }
 }
 
-/* ---------- 3. 宽度计算 ---------- */
+/* ---------- 宽度计算 ---------- */
 static void test_width(void)
 {
     const struct {
@@ -86,7 +86,7 @@ static void test_width(void)
     }
 }
 
-/* ---------- 4. 字符串长度 ---------- */
+/* ---------- 字符串长度 ---------- */
 static void test_len(void)
 {
     ASSERT_EQ(utf8_len(""), 0);
@@ -96,16 +96,17 @@ static void test_len(void)
     ASSERT_EQ(utf8_len("🙂😀"), 2);
 }
 
-/* ---------- 5. 字符串显示宽度 ---------- */
+/* ---------- 字符串显示宽度 ---------- */
 static void test_swidth(void)
 {
     ASSERT_EQ(utf8_swidth("abc"), 3);
     ASSERT_EQ(utf8_swidth("中文"), 4);
     ASSERT_EQ(utf8_swidth("ひら"), 4);
     ASSERT_EQ(utf8_swidth("👨‍💻"), 2);   /* 虽然底层有多个码点，但首码点宽 2 */
+    ASSERT_EQ(utf8_swidth("🙂😀"), 4);
 }
 
-/* ---------- 6. 非法/边界序列 ---------- */
+/* ---------- 非法/边界序列 ---------- */
 static void test_validate(void)
 {
     /* 合法 */
@@ -123,17 +124,7 @@ static void test_validate(void)
     ASSERT_NE(utf8_valid("\xF4\x90\x80\x80", 4), 0);
 }
 
-/* ---------- 8. 单字符字节长度 ---------- */
-static void test_chr_len(void)
-{
-    ASSERT_EQ(utf8_chr_len("A"), 1);
-    ASSERT_EQ(utf8_chr_len("中"), 3);
-    ASSERT_EQ(utf8_chr_len("𠮷"), 4);
-    /* 非法首字节 -> 返回 1，保证调用方能安全跳过 */
-    ASSERT_EQ(utf8_chr_len("\xFF"), 1);
-}
-
-/* ---------- 9. 回退到上一字符起始 ---------- */
+/* ---------- 回退到上一字符起始 ---------- */
 static void test_prev(void)
 {
     const char *s = "a中𠮷";          /* 字节序列为 0x61 | E4 B8 AD | F0 A0 AE B7 */
@@ -153,7 +144,7 @@ static void test_prev(void)
     ASSERT_EQ(pos, 0);
 }
 
-/* ---------- 10. 按字符向前/向后跳 n 个位置 ---------- */
+/* ---------- 按字符向前/向后跳 n 个位置 ---------- */
 static void test_advance(void)
 {
     const char *s = "a中𠮷";
@@ -168,7 +159,7 @@ static void test_advance(void)
     /* 向后跳 暂不支持, 容易出现问题*/
 }
 
-/* ---------- 11. 按显示宽度截断 ---------- */
+/* ---------- 按显示宽度截断 ---------- */
 static void test_trunc_width(void)
 {
     const char *s = "abc中文";  /* 宽度：1+1+1+2+2=7 */
@@ -180,7 +171,7 @@ static void test_trunc_width(void)
     ASSERT_EQ(utf8_trunc_width(s, 7), 9);   /* "abc中" 宽度=5，再加"文"会超限 */
 }
 
-/* ---------- 12. 组合注册 ---------- */
+/* ---------- 组合注册 ---------- */
 TEST(utf8, test)
 {
     test_decode();
@@ -189,7 +180,6 @@ TEST(utf8, test)
     test_len();
     test_swidth();
     test_validate();
-    test_chr_len();
     test_prev();
     test_advance();
     test_trunc_width();

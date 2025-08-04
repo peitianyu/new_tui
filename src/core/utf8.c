@@ -145,16 +145,6 @@ int utf8_valid(const char *s, size_t n)
     return 0;
 }
 
-size_t utf8_chr_len(const char *s)
-{
-    const unsigned char *p = (const unsigned char *)s;
-    if (p[0] < 0x80) return 1;
-    if ((p[0] & 0xE0) == 0xC0) return 2;
-    if ((p[0] & 0xF0) == 0xE0) return 3;
-    if ((p[0] & 0xF8) == 0xF0) return 4;
-    return 1; /* invalid -> 1 byte skip */
-}
-
 size_t utf8_prev(const char *s, size_t cursor)
 {
     if (cursor == 0) return 0;
