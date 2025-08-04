@@ -1,0 +1,191 @@
+/* widgets_inputbox.c */
+#include "widgets.h"
+#include <string.h>
+#include <stdlib.h>
+#include <assert.h>
+
+static void inputbox_draw(TuiNode *ib, void *event);
+static void inputbox_focus(InputBoxData *d, TuiNode* ib, void *event);
+
+/* ----------------------------- 构造 -------------------------------- */
+TuiNode *inputbox_new(TuiRect r, InputBoxData *d)
+{
+    TuiNode *n = tui_node_new(r.x, r.y, r.w, r.h);
+    n->bits.focusable = 1;
+    n->data = d;
+    n->draw = inputbox_draw;
+
+    if (!d->cap) d->cap = 128;
+    if (!d->text) {
+        d->text = malloc(d->cap);
+        d->text[0] = '\0';
+        d->len = 0;
+        d->cursor = 0;
+    }
+    return n;
+}
+
+/* ----------------------------- 绘制 -------------------------------- */
+static void inputbox_draw(TuiNode *ib, void *event) {
+    InputBoxData *d = (InputBoxData *)ib->data;
+    style_t st = d->st;
+
+    /* 处理键鼠事件 */
+    if (ib->bits.focus) {
+        inputbox_focus(d, ib, event);
+    }
+
+    /* 可视宽度（减去边框） */
+    int bw = st.border ? 1 : 0;
+    int vis_w = ib->bounds.w - 2 * bw;
+    if (vis_w <= 0) {
+        return;
+    }
+
+    /* 计算字符级别的光标偏移量（以字符宽度为单位） */
+    int cursor_col = utf8_swidth_len(d->text, d->cursor);
+
+    /* 水平滚动：保证光标在可见区域 */
+    int scroll = d->scroll_x;
+    if (cursor_col < scroll)
+        scroll = cursor_col;
+    else if (cursor_col >= scroll + vis_w)
+        scroll = cursor_col - vis_w + 1;
+    d->scroll_x = scroll;
+
+    /* 从滚动位置开始渲染 */
+    const char *start = d->text;
+    const char *p = start;
+    int tmp_scroll = scroll;
+    while (tmp_scroll-- > 0) utf8_decode(&p);  /* 跳过 scroll 个字符 */
+
+    /* 构造可见文本子串 */
+    char vis_buf[vis_w * 4 + 1];  /* UTF-8 最多 4 字节/字符 */
+    const char *q = p;
+    int rendered_w = 0;
+    while (*q && rendered_w < vis_w) {
+        uint32_t cp = utf8_decode(&q);
+        rendered_w += utf8_width(cp);
+    }
+    size_t vis_bytes = q - p;
+    memcpy(vis_buf, p, vis_bytes);
+    vis_buf[vis_bytes] = '\0';
+
+    /* 绘制文本 */
+    canvas_draw((rect_t){ ib->abs_x, ib->abs_y, ib->bounds.w, ib->bounds.h }, vis_buf, st);
+
+    /* 光标位置（屏幕坐标） */
+    int cursor_scr_x = ib->abs_x + bw + (cursor_col - d->scroll_x);
+    int cursor_scr_y = ib->abs_y + bw;
+    canvas_cursor_move(cursor_scr_x+1, cursor_scr_y+1, 1);
+
+    d->st = st;
+}
+
+/* ----------------------------- 编辑操作 ---------------------------- */
+static void inputbox_insert_char(InputBoxData *d, uint32_t ch) {
+    if (d->len + 4 >= d->cap) {
+        d->cap *= 2;
+        d->text = realloc(d->text, d->cap);
+    }
+    char tmp[4];
+    int bytes = utf8_encode(ch, tmp);
+    if (!bytes) {
+        return;
+    }
+
+    memmove(d->text + d->cursor + bytes,
+            d->text + d->cursor,
+            d->len - d->cursor + 1);
+    memcpy(d->text + d->cursor, tmp, bytes);
+    d->cursor += bytes;
+    d->len += bytes;
+}
+
+static void inputbox_backspace(InputBoxData *d) {
+    if (d->cursor == 0) {
+        return;
+    }
+    const char *prev = d->text + d->cursor;
+    utf8_decode(&prev);
+    size_t step = (d->text + d->cursor) - prev;
+    memmove(d->text + d->cursor - step,
+            d->text + d->cursor,
+            d->len - d->cursor + 1);
+    d->cursor -= step;
+    d->len -= step;
+}
+
+static void inputbox_delete(InputBoxData *d) {
+    if (d->cursor >= d->len) {
+        return;
+    }
+    const char *next = d->text + d->cursor;
+    utf8_decode(&next);
+    size_t step = next - (d->text + d->cursor);
+    memmove(d->text + d->cursor,
+            d->text + d->cursor + step,
+            d->len - d->cursor - step + 1);
+    d->len -= step;
+}
+
+static void inputbox_move_cursor(InputBoxData *d, int dir) {
+    if (dir < 0 && d->cursor > 0) {
+        const char *prev = d->text + d->cursor;
+        utf8_decode(&prev);
+        d->cursor = prev - d->text;
+    } else if (dir > 0 && d->cursor < d->len) {
+        const char *next = d->text + d->cursor;
+        utf8_decode(&next);
+        d->cursor = next - d->text;
+    }
+}
+
+static void inputbox_clear_line(InputBoxData *d) {
+    d->text[0] = '\0';
+    d->len = d->cursor = 0;
+}
+
+/* ----------------------------- 事件处理 ---------------------------- */
+static void inputbox_focus(InputBoxData *d, TuiNode* ib, void *event) {
+    if (!event) {
+        return;
+    }
+
+    event_t *ev = (event_t *)event;
+
+    if (ev->type == EVENT_KEY) {
+        key_event_t *k = &ev->key;
+        for (int i = 0; i < k->num; ++i) {
+            int ch = k->key[i];
+            if (k->type[i] == KEY_SPECIAL) {
+                switch (ch) {
+                    case K_BACKSPACE: inputbox_backspace(d); break;
+                    case K_DEL:       inputbox_delete(d);    break;
+                    case K_LEFT:      inputbox_move_cursor(d, -1); break;
+                    case K_RIGHT:     inputbox_move_cursor(d,  1); break;
+                    case K_HOME:      d->cursor = 0; break;
+                    case K_END:       d->cursor = d->len; break;
+                    case CTRL_KEY('U'): inputbox_clear_line(d); break;
+                }
+            } else {
+                inputbox_insert_char(d, k->key[i]);
+            }
+        }
+    } else if (ev->type == EVENT_MOUSE && ev->mouse.type == MOUSE_PRESS) {
+        int bw = d->st.border ? 1 : 0;
+        int vis_w = ib->bounds.w - 2 * bw;
+        int click_col = ev->mouse.x - ib->abs_x - bw + d->scroll_x;
+        if (click_col < 0) click_col = 0;
+
+        const char *p = d->text;
+        int col = 0;
+        size_t pos = 0;
+        while (*p && col < click_col) {
+            uint32_t cp = utf8_decode(&p);
+            col += utf8_width(cp);
+            pos = p - d->text;
+        }
+        d->cursor = pos;
+    }
+}

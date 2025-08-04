@@ -33,15 +33,9 @@ static void print_event(const event_t *e) {
                 } else if (k > 0xF8000) {     debug_print("【Alt+%c】", k - 0xF8000);
                 } else {                      debug_print("【0x%02X】 ", k); }
             } else { /* KEY_NORMAL */
-                unsigned char bytes[5] = {0};
-                int idx = 0;
-                if (k & 0xFF000000) bytes[idx++] = (k >> 24) & 0xFF;
-                if (k & 0x00FF0000) bytes[idx++] = (k >> 16) & 0xFF;
-                if (k & 0x0000FF00) bytes[idx++] = (k >>  8) & 0xFF;
-                if (k & 0x000000FF) bytes[idx++] =  k        & 0xFF;
-                wchar_t wbuf[2] = {0};
-                if (mbstowcs(wbuf, (char *)bytes, 2) != (size_t)-1) { debug_print("'%ls' ", wbuf); }
-                else                                                { debug_print("'<?>' "); }
+                char tmp[4];
+                utf8_encode(k, tmp);
+                debug_print("'%s' ", tmp);
             }
         }
         debug_print("\n");

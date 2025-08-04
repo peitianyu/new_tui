@@ -10,8 +10,9 @@
 #include <sys/ioctl.h>
 #include <signal.h>
 #include <poll.h>
+#include "utf8.h"
 #include <locale.h>
-#include <wchar.h>
+// #include <wchar.h>
 
 /* ---------------- 键盘 ---------------- */
 #define K_ENTER     0xF0001

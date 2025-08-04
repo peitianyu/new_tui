@@ -62,39 +62,47 @@ int utf8_encode(uint32_t cp, char dst[4])
 }
 
 /* ---------- 宽度 ---------- */
-/* 查表：0=不可见/控制，1=半角，2=全角 */
-static const uint8_t width_table[256] = {
-    /* 00-1F */ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    /* 20-7F */ 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-    /* 80-9F */ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    /* A0-BF */ 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-    /* C0-FF */ 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-};
-
 int utf8_width(uint32_t cp)
 {
-    if (cp < 0x80)   return width_table[cp];
-    if (cp < 0x300)  return 1;
-    /* 东亚宽字符区 */
-    if ((cp >= 0x1100 && cp <= 0x115F) ||
-        (cp >= 0x2329 && cp <= 0x232A) ||
-        (cp >= 0x2E80 && cp <= 0x303E) ||
-        (cp >= 0x3040 && cp <= 0xA4CF) ||
-        (cp >= 0xAC00 && cp <= 0xD7A3) ||
-        (cp >= 0xF900 && cp <= 0xFAFF) ||
-        (cp >= 0xFE10 && cp <= 0xFE19) ||
-        (cp >= 0xFE30 && cp <= 0xFE6F) ||
-        (cp >= 0xFF00 && cp <= 0xFF60) ||
-        (cp >= 0xFFE0 && cp <= 0xFFE6) ||
-        (cp >= 0x1F600 && cp <= 0x1F64F) || 
-        (cp >= 0x20000 && cp <= 0x2FFFD) ||
-        (cp >= 0x30000 && cp <= 0x3FFFD))
-        return 2;
+    /* 0x00–0x7F：直接查表 */
+    static const uint8_t w0[128] = {
+        /* 00–1F：控制字符宽 0 */
+        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+        /* 20–7F：其余 ASCII 宽 1 */
+        1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,
+        1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,
+        1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,
+        1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,
+        1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,
+        1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,0
+    };
+    if (cp < 0x80) return w0[cp];
+
+    /* 零宽格式控制字符 */
+    if (cp == 0x200B || cp == 0x200C || cp == 0x200D || cp == 0xFE0F)
+        return 0;
+
+    /* 0x80–0x2FF：统一按 1 处理 */
+    if (cp < 0x300) return 1;
+
+    static const struct { uint32_t lo, hi; } wide[] = {
+        {0x1100,0x115F}, {0x2329,0x232A}, {0x2E80,0x303E},
+        {0x3040,0xA4CF}, {0xAC00,0xD7A3}, {0xF900,0xFAFF},
+        {0xFE10,0xFE19}, {0xFE30,0xFE6F}, {0xFF00,0xFF60},
+        {0xFFE0,0xFFE6}, {0x1F600,0x1F64F},
+        {0x20000,0x2FFFD}, {0x30000,0x3FFFD}
+    };
+    size_t l = 0, r = sizeof(wide)/sizeof(wide[0]);
+    while (l < r) {
+        size_t m = (l + r) >> 1;
+        if (cp > wide[m].hi)      l = m + 1;
+        else if (cp < wide[m].lo) r = m;
+        else                      return 2;
+    }
     return 1;
 }
 
-/* ---------- 辅助 ---------- */
 size_t utf8_len(const char *s)
 {
     size_t n = 0;
@@ -105,6 +113,17 @@ size_t utf8_len(const char *s)
     return n;
 }
 
+int utf8_swidth_len(const char *s, size_t byte_len) {
+    int w = 0;
+    const char *end = s + byte_len;
+    while (s < end) {
+        const char *old = s;
+        uint32_t cp = utf8_decode(&s);
+        w += utf8_width(cp);
+    }
+    return w;
+}
+
 int utf8_swidth(const char *s)
 {
     int w = 0;
@@ -113,7 +132,7 @@ int utf8_swidth(const char *s)
     return w;
 }
 
-int utf8_validate(const char *s, size_t n)
+int utf8_valid(const char *s, size_t n)
 {
     const char *end = s + n;
     while (s < end) {
@@ -125,3 +144,4 @@ int utf8_validate(const char *s, size_t n)
     }
     return 0;
 }
+

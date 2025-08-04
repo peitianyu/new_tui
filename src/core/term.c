@@ -95,19 +95,6 @@ static inline int map_special(int raw) {
     }
 }
 
-static int is_utf8_start(unsigned char c) {
-    return (c & 0x80) == 0 || (c & 0xE0) == 0xC0 ||
-           (c & 0xF0) == 0xE0 || (c & 0xF8) == 0xF0;
-}
-
-static int utf8_len(unsigned char c) {
-    if ((c & 0x80) == 0) return 1;
-    if ((c & 0xE0) == 0xC0) return 2;
-    if ((c & 0xF0) == 0xE0) return 3;
-    if ((c & 0xF8) == 0xF0) return 4;
-    return 1;
-}
-
 static event_t parse_keyboard_event(const char *b, int n) {
     event_t e = {.type = EVENT_KEY, .key.num = 0};
 
@@ -162,19 +149,16 @@ static event_t parse_keyboard_event(const char *b, int n) {
             continue;
         }
 
-        if (is_utf8_start(c)) {
-            int len = utf8_len(c);
-            if (pos + len > n) break;
-            int key = 0;
-            for (int i = 0; i < len; ++i)
-                key = (key << 8) | (unsigned char)b[pos + i];
+        const char *p = b + pos;
+        uint32_t cp = utf8_decode(&p);
+        if (cp == 0xFFFD) {
             e.key.type[e.key.num] = KEY_NORMAL;
-            e.key.key[e.key.num++] = key;
-            pos += len;
+            e.key.key[e.key.num++] = (unsigned char)b[pos];
+            pos += 1;
         } else {
             e.key.type[e.key.num] = KEY_NORMAL;
-            e.key.key[e.key.num++] = c;
-            pos += 1;
+            e.key.key[e.key.num++] = cp;
+            pos = p - b;
         }
     }
     return e.key.num ? e : (event_t){EVENT_NONE};

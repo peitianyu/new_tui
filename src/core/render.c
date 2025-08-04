@@ -209,7 +209,7 @@ static inline void render_cell_fast(int idx, char **p, int with_pos) {
     if (st.bold)      { memcpy(dst, "\e[1m", 4);  dst += 4; }
     if (st.strike)    { memcpy(dst, "\e[9m", 4);  dst += 4; }
     
-    int fg = (st.border) ? st.border_fg : st.fg;
+    int fg = (st.border) ? 15-st.border_fg : st.fg;
     memcpy(dst, FG[fg], FG_LEN[fg]);       dst += FG_LEN[fg];
     memcpy(dst, BG[st.bg], BG_LEN[st.bg]); dst += BG_LEN[st.bg];
     memcpy(dst, ch, ch_len);               dst += ch_len;
