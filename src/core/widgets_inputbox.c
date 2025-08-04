@@ -44,23 +44,22 @@ static void inputbox_draw(TuiNode *ib, void *event) {
     else if (cursor_col >= scroll + vis_w) { scroll = cursor_col - vis_w + 1; }
     d->scroll_x = scroll;
 
-    /* 从滚动位置开始渲染 */
-    const char *start = d->text;
-    const char *p = start;
-    int tmp_scroll = scroll;
-    while (tmp_scroll-- > 0) { utf8_decode(&p); }  /* 跳过 scroll 个字符 */
+    /* 跳过滚动位置 */
+    const char *p = d->text;
+    size_t skip_bytes = utf8_advance(p, 0, scroll);
+    p += skip_bytes;
 
-    /* 构造可见文本子串 */
-    char vis_buf[vis_w * 4 + 1];  /* UTF-8 最多 4 字节/字符 */
-    const char *q = p;
-    int rendered_w = 0;
-    while (*q && rendered_w < vis_w) {
-        uint32_t cp = utf8_decode(&q);
-        rendered_w += utf8_width(cp);
-    }
-    size_t vis_bytes = q - p;
-    memcpy(vis_buf, p, vis_bytes);
+    /* 截取可见文本 */
+    char vis_buf[vis_w * 4 + 1];
+    size_t vis_bytes = utf8_trunc_width(p, vis_w);
+    strncpy(vis_buf, p, vis_bytes);
     vis_buf[vis_bytes] = '\0';
+
+    if(vis_w - utf8_swidth_len(vis_buf, vis_bytes) == 2) {
+        memmove(vis_buf + 1, vis_buf, vis_bytes);
+        vis_buf[0] = ' ';
+        vis_buf[vis_bytes+1] = '\0';
+    }
 
     /* 绘制文本 */
     canvas_draw((rect_t){ ib->abs_x, ib->abs_y, ib->bounds.w, ib->bounds.h }, vis_buf, st);
@@ -92,9 +91,17 @@ static void inputbox_insert_char(InputBoxData *d, uint32_t ch) {
 
 static void inputbox_backspace(InputBoxData *d) {
     if (d->cursor == 0) { return; }
-    const char *prev = d->text + d->cursor;
-    utf8_decode(&prev);
+
+    const char *p = d->text;
+    const char *prev = p;
+    while (p < d->text + d->cursor) {
+        prev = p;
+        utf8_decode(&p);
+    }
+
     size_t step = (d->text + d->cursor) - prev;
+    if (step > d->cursor) { return; }
+
     memmove(d->text + d->cursor - step,
             d->text + d->cursor,
             d->len - d->cursor + 1);
@@ -164,13 +171,15 @@ static void inputbox_focus(InputBoxData *d, TuiNode* ib, void *event) {
         int vis_w = ib->bounds.w - 2 * bw;
         int click_col = ev->mouse.x - ib->abs_x - bw + d->scroll_x;
         if (click_col < 0) click_col = 0;
-
+    
         const char *p = d->text;
         int col = 0;
         size_t pos = 0;
-        while (*p && col < click_col) {
+        while (*p) {
             uint32_t cp = utf8_decode(&p);
-            col += utf8_width(cp);
+            int w = utf8_width(cp);
+            if (col + w > click_col) break;
+            col += w;
             pos = p - d->text;
         }
         d->cursor = pos;

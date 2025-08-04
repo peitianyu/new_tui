@@ -123,7 +123,64 @@ static void test_validate(void)
     ASSERT_NE(utf8_valid("\xF4\x90\x80\x80", 4), 0);
 }
 
-/* ---------- 7. 组合注册 ---------- */
+/* ---------- 8. 单字符字节长度 ---------- */
+static void test_chr_len(void)
+{
+    ASSERT_EQ(utf8_chr_len("A"), 1);
+    ASSERT_EQ(utf8_chr_len("中"), 3);
+    ASSERT_EQ(utf8_chr_len("𠮷"), 4);
+    /* 非法首字节 -> 返回 1，保证调用方能安全跳过 */
+    ASSERT_EQ(utf8_chr_len("\xFF"), 1);
+}
+
+/* ---------- 9. 回退到上一字符起始 ---------- */
+static void test_prev(void)
+{
+    const char *s = "a中𠮷";          /* 字节序列为 0x61 | E4 B8 AD | F0 A0 AE B7 */
+    size_t pos = strlen(s);          /* 指向字符串结尾 '\0' */
+    ASSERT_EQ(pos, 8);
+
+    pos = utf8_prev(s, pos);         /* 应回到 𠮷 的起始 */
+    ASSERT_EQ(pos, 4);
+
+    pos = utf8_prev(s, pos);         /* 应回到 中 的起始 */
+    ASSERT_EQ(pos, 1);
+
+    pos = utf8_prev(s, pos);         /* 应回到 a 的起始 */
+    ASSERT_EQ(pos, 0);
+
+    pos = utf8_prev(s, pos);         /* 已在开头，仍返回 0 */
+    ASSERT_EQ(pos, 0);
+}
+
+/* ---------- 10. 按字符向前/向后跳 n 个位置 ---------- */
+static void test_advance(void)
+{
+    const char *s = "a中𠮷";
+    size_t cur = 0;
+
+    /* 向前跳 */
+    cur = utf8_advance(s, cur, 1);  ASSERT_EQ(cur, 1);   /* "a" */
+    cur = utf8_advance(s, cur, 1);  ASSERT_EQ(cur, 4);   /* "中" */
+    cur = utf8_advance(s, cur, 1);  ASSERT_EQ(cur, 8);   /* "𠮷" */
+    cur = utf8_advance(s, cur, 1);  ASSERT_EQ(cur, 8);   /* 末尾 */
+
+    /* 向后跳 暂不支持, 容易出现问题*/
+}
+
+/* ---------- 11. 按显示宽度截断 ---------- */
+static void test_trunc_width(void)
+{
+    const char *s = "abc中文";  /* 宽度：1+1+1+2+2=7 */
+    ASSERT_EQ(utf8_trunc_width(s, 0), 0);
+    ASSERT_EQ(utf8_trunc_width(s, 1), 1);   /* "a" */
+    ASSERT_EQ(utf8_trunc_width(s, 3), 3);   /* "abc" */
+    ASSERT_EQ(utf8_trunc_width(s, 4), 3);   /* 无法完整放下"中" */
+    ASSERT_EQ(utf8_trunc_width(s, 5), 6);   /* "abc中" 宽度=5 */
+    ASSERT_EQ(utf8_trunc_width(s, 7), 9);   /* "abc中" 宽度=5，再加"文"会超限 */
+}
+
+/* ---------- 12. 组合注册 ---------- */
 TEST(utf8, test)
 {
     test_decode();
@@ -132,5 +189,9 @@ TEST(utf8, test)
     test_len();
     test_swidth();
     test_validate();
+    test_chr_len();
+    test_prev();
+    test_advance();
+    test_trunc_width();
     puts("Extended UTF-8 tests passed.");
 }

@@ -145,3 +145,46 @@ int utf8_valid(const char *s, size_t n)
     return 0;
 }
 
+size_t utf8_chr_len(const char *s)
+{
+    const unsigned char *p = (const unsigned char *)s;
+    if (p[0] < 0x80) return 1;
+    if ((p[0] & 0xE0) == 0xC0) return 2;
+    if ((p[0] & 0xF0) == 0xE0) return 3;
+    if ((p[0] & 0xF8) == 0xF0) return 4;
+    return 1; /* invalid -> 1 byte skip */
+}
+
+size_t utf8_prev(const char *s, size_t cursor)
+{
+    if (cursor == 0) return 0;
+    size_t pos = cursor;
+    do { --pos; } while (pos > 0 && (s[pos] & 0xC0) == 0x80);
+    return pos;
+}
+
+size_t utf8_advance(const char *s, size_t cursor, int target_width) {
+    const char *p = s + cursor;
+    int width = 0;
+
+    while (*p && width < target_width) {
+        uint32_t cp = utf8_decode(&p);
+        width += utf8_width(cp);
+    }
+
+    return p - s;
+}
+
+size_t utf8_trunc_width(const char *s, int max_w)
+{
+    int w = 0;
+    const char *p = s;
+    while (*p) {
+        const char *old = p;
+        uint32_t cp = utf8_decode(&p);
+        int cw = utf8_width(cp);
+        if (w + cw > max_w) return old - s;
+        w += cw;
+    }
+    return p - s;
+}
