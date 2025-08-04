@@ -247,8 +247,12 @@ void canvas_flush(void) {
     memcpy(g_last_canvas.sty, g_canvas.sty, N * sizeof(style_t));
 
     flush_cursor:
-        if(g_canvas.cursor.cursor_able) 
+        if(g_canvas.cursor.cursor_able) {
+            int id = g_canvas.cursor.y * g_canvas.w + g_canvas.cursor.x;
+            if(g_canvas.buf[id] == 0) g_canvas.cursor.x++;
             printf("\e[?25h\e[%d q\e[%d;%dH", g_canvas.cursor.st, g_canvas.cursor.y, g_canvas.cursor.x);
+        }
+            
         fflush(stdout);
 }
 

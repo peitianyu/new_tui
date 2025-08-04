@@ -37,13 +37,11 @@ static void inputbox_draw(TuiNode *ib, void *event) {
 
     /* 计算字符级别的光标偏移量（以字符宽度为单位） */
     int cursor_col = utf8_swidth_len(d->text, d->cursor);
-
-    /* 水平滚动：保证光标在可见区域 */
     int scroll = d->scroll_x;
     if (cursor_col < scroll)               { scroll = cursor_col; }
     else if (cursor_col >= scroll + vis_w) { scroll = cursor_col - vis_w + 1; }
     d->scroll_x = scroll;
-
+    
     /* 跳过滚动位置 */
     const char *p = d->text;
     size_t skip_bytes = utf8_advance(p, 0, scroll);
@@ -54,7 +52,6 @@ static void inputbox_draw(TuiNode *ib, void *event) {
     size_t vis_bytes = utf8_trunc_width(p, vis_w);
     strncpy(vis_buf, p, vis_bytes);
     vis_buf[vis_bytes] = '\0';
-
     if(vis_w - utf8_swidth_len(vis_buf, vis_bytes) == 2) {
         memmove(vis_buf + 1, vis_buf, vis_bytes);
         vis_buf[0] = ' ';
@@ -122,7 +119,6 @@ static void inputbox_delete(InputBoxData *d) {
 
 static void inputbox_move_cursor(InputBoxData *d, int dir) {
     if (dir < 0 && d->cursor > 0) {
-        /* 向前移动一个字符 */
         const char *p = d->text;
         size_t prev_pos = 0;
         while (p < d->text + d->cursor) {
@@ -131,7 +127,6 @@ static void inputbox_move_cursor(InputBoxData *d, int dir) {
         }
         d->cursor = prev_pos;
     } else if (dir > 0 && d->cursor < d->len) {
-        /* 向后移动一个字符 */
         const char *next = d->text + d->cursor;
         utf8_decode(&next);
         d->cursor = next - d->text;
