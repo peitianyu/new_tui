@@ -120,12 +120,12 @@ static void inputbox_focus(InputBoxData *d, TuiNode* ib, void *event) {
             int ch = k->key[i];
             if (k->type[i] == KEY_SPECIAL) {
                 switch (ch) {
-                    case K_BACKSPACE: inputbox_backspace(d); break;
-                    case K_DEL:       inputbox_delete(d);    break;
-                    case K_LEFT:      inputbox_move_cursor(d, -1); break;
-                    case K_RIGHT:     inputbox_move_cursor(d,  1); break;
-                    case K_HOME:      d->cursor = 0; break;
-                    case K_END:       d->cursor = d->len; break;
+                    case K_BACKSPACE: inputbox_backspace(d);        break;
+                    case K_DEL:       inputbox_delete(d);           break;
+                    case K_LEFT:      inputbox_move_cursor(d,-1);   break;
+                    case K_RIGHT:     inputbox_move_cursor(d, 1);   break;
+                    case K_HOME:      d->cursor = 0;                break;
+                    case K_END:       d->cursor = d->len;           break;
                 }
             } else {
                 inputbox_insert_char(d, k->key[i]);

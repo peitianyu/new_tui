@@ -104,57 +104,90 @@ static void draw_border(rect_t r, style_t st) {
 }
 
 /* 3. 文本 ----------------------------------------------------------------- */
-static void draw_text(rect_t r_orig, const char *utf8, style_t st) {
+static void draw_text(rect_t r_orig, const char *utf8, style_t st, int wrap)
+{
     if (!st.text || !utf8) return;
 
-    /* 可用区域 */
-    int bw = st.border ? 1 : 0;
-    int usable_w = r_orig.w - 2 * bw;
-    int usable_h = r_orig.h - 2 * bw;
-    if (usable_w <= 0 || usable_h <= 0) return;
+    const int bw = st.border ? 1 : 0;
+    const int ux = r_orig.x + bw;
+    const int uy = r_orig.y + bw;
+    const int uw = r_orig.w - 2 * bw;
+    const int uh = r_orig.h - 2 * bw;
+    if (uw <= 0 || uh <= 0) return;
 
-    int x0 = r_orig.x + bw;
-    int y0 = r_orig.y + bw;
-
-    /* 统计行 */
-    typedef struct { const char *s; int w; } line_t;
-    line_t lines[64];
-    int n = 0;
-    for (const char *p = utf8; *p && n < 64;) {
-        lines[n].s = p;
-        lines[n].w = 0;
-        while (*p && *p != '\n') {
-            uint32_t cp = utf8_decode(&p);
-            lines[n].w += utf8_width(cp);
-        }
-        ++n;
-        if (*p == '\n') ++p;
+    /* ---------- 1. 把 UTF-8 拆成 codepoint + 宽度 ---------- */
+    uint32_t cps[1024];
+    int      wds[1024];
+    int      cnt = 0;
+    for (const char *p = utf8; *p && cnt < 1024;) {
+        uint32_t cp = utf8_decode(&p);
+        cps[cnt] = cp;
+        wds[cnt] = utf8_width(cp);
+        ++cnt;
     }
 
-    /* 垂直偏移 */
-    int start_y = y0;
-    if (st.align_vert == 1) start_y += (usable_h - n) / 2;
-    if (st.align_vert == 2) start_y += (usable_h - n);
+    /* ---------- 2. 排版成行 ---------- */
+    typedef struct { int start, len, vis; } line_t;
+    line_t lines[64];
+    int    lc = 0;
 
-    /* 逐行绘制 */
-    for (int ly = 0; ly < n && start_y + ly < y0 + usable_h; ++ly) {
-        int start_x = x0;
-        if (st.align_horz == 1) start_x += (usable_w - lines[ly].w) / 2;
-        if (st.align_horz == 2) start_x += (usable_w - lines[ly].w);
+    int i = 0;
+    while (i < cnt && lc < 64) {
+        int s = i, vis = 0, lastsp = -1;
 
-        const char *p = lines[ly].s;
-        int cx = start_x;
-        while (*p && *p != '\n') {
-            uint32_t cp = utf8_decode(&p);
-            int cw = utf8_width(cp);
-            if (cx >= x0 && cx < x0 + usable_w && start_y + ly < y0 + usable_h) {
-                int i = (start_y + ly) * g_canvas.w + cx;
-                g_canvas.buf[i] = cp; g_canvas.sty[i] = st;
-                if (cw == 2 && cx + 1 < x0 + usable_w) {
-                    g_canvas.buf[i + 1] = 0; g_canvas.sty[i + 1] = st;
-                }
+        /* 不换行模式：硬截断到可用宽度 */
+        if (!wrap) {
+            while (i < cnt && cps[i] != '\n' && vis + wds[i] <= uw) {
+                vis += wds[i];
+                ++i;
             }
-            cx += cw;
+            lines[lc++] = (line_t){s, i - s, vis};
+            if (i < cnt && cps[i] == '\n') ++i;   /* 吃掉显式换行 */
+            continue;
+        }
+
+        /* 自动换行模式：按单词边界软换行 */
+        while (i < cnt) {
+            if (cps[i] == '\n') { ++i; break; }
+            if (cps[i] == ' ') lastsp = i;
+            if (vis + wds[i] > uw) {
+                if (lastsp >= 0 && lastsp > s) {   /* 退格到空格 */
+                    i = lastsp + 1;
+                    vis = 0;
+                    for (int k = s; k < lastsp; ++k) vis += wds[k];
+                }
+                break;
+            }
+            vis += wds[i++];
+        }
+        lines[lc++] = (line_t){s, i - s, vis};
+        while (i < cnt && (cps[i] == ' ' || cps[i] == '\n')) ++i; /* 吃掉空格/换行 */
+    }
+
+    /* ---------- 3. 垂直对齐 ---------- */
+    int y0 = uy;
+    if (st.align_vert == 1) y0 += (uh - lc) / 2;
+    if (st.align_vert == 2) y0 += (uh - lc);
+
+    /* ---------- 4. 逐行绘制 ---------- */
+    for (int ln = 0; ln < lc && y0 + ln < uy + uh; ++ln) {
+        int x0 = ux;
+        if (st.align_horz == 1) x0 += (uw - lines[ln].vis) / 2;
+        if (st.align_horz == 2) x0 += (uw - lines[ln].vis);
+
+        for (int k = 0; k < lines[ln].len; ++k) {
+            int idx = lines[ln].start + k;
+            uint32_t cp = cps[idx];
+            int w = wds[idx];
+            if (x0 + w > ux + uw) break;
+            int pos = (y0 + ln) * g_canvas.w + x0;
+            g_canvas.buf[pos] = cp;
+            g_canvas.sty[pos] = st;
+            if (w == 2 && x0 + 1 < ux + uw) {
+                g_canvas.buf[pos + 1] = 0;
+                g_canvas.sty[pos + 1] = st;
+            }
+            x0 += w;
         }
     }
 }
@@ -165,7 +198,16 @@ void canvas_draw(rect_t r_orig, const char *utf8, style_t st) {
 
     draw_rect(r, st);           /* 1. 背景 */
     draw_border(r_orig, st);    /* 2. 边框 */
-    draw_text(r_orig, utf8, st);/* 3. 文本 */
+    draw_text(r_orig, utf8, st, false);/* 3. 文本 */
+}
+
+void canvas_draw_warp(rect_t r_orig, const char *utf8, style_t st) {
+    rect_t r = clip(r_orig);
+    if (r.w <= 0 || r.h <= 0) return;
+
+    draw_rect(r, st);           /* 1. 背景 */
+    draw_border(r_orig, st);    /* 2. 边框 */
+    draw_text(r_orig, utf8, st, true);  /* 3. 文本 */
 }
 
 /* ---------- 终端输出 ---------- */

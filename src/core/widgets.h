@@ -8,6 +8,13 @@
 #include "log.h"
 #include <stddef.h>  
 
+typedef struct LabelData LabelData;
+struct LabelData {
+    char *text;
+    style_t st;
+    bool auto_wrap;
+};
+TuiNode *label_new(TuiRect r, const char *text, LabelData *data);
 
 typedef struct ButtonData ButtonData;
 struct ButtonData {
