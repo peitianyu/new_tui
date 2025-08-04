@@ -26,7 +26,5 @@ static void label_draw(TuiNode *lb, void *event)
     rect_t r = { lb->abs_x, lb->abs_y, lb->bounds.w, lb->bounds.h };
     if (r.w <= 0 || r.h <= 0) return;
 
-    if(d->auto_wrap)    canvas_draw_warp(r, d->text, d->st);
-    else                canvas_draw(r, d->text, d->st);
+    canvas_draw(r, d->text, d->st);
 }
-

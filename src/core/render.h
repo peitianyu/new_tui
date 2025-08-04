@@ -21,6 +21,7 @@ typedef union {
         uint32_t focus     : 1; 
         uint32_t align_horz: 2;
         uint32_t align_vert: 2;
+        uint32_t wrap      : 1;
         uint32_t italic    : 1;
         uint32_t underline : 1;
         uint32_t bold      : 1;
@@ -48,7 +49,6 @@ void canvas_init(int w, int h);
 void canvas_free(void);
 void canvas_clear(void);
 void canvas_draw(rect_t r_orig, const char *utf8, style_t st);
-void canvas_draw_warp(rect_t r_orig, const char *utf8, style_t st); 
 void canvas_flush_all(void);
 void canvas_flush(void);
 void canvas_cursor_move(int x, int y, int style);

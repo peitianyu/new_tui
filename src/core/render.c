@@ -104,7 +104,7 @@ static void draw_border(rect_t r, style_t st) {
 }
 
 /* 3. 文本 ----------------------------------------------------------------- */
-static void draw_text(rect_t r_orig, const char *utf8, style_t st, int wrap)
+static void draw_text(rect_t r_orig, const char *utf8, style_t st)
 {
     if (!st.text || !utf8) return;
 
@@ -136,7 +136,7 @@ static void draw_text(rect_t r_orig, const char *utf8, style_t st, int wrap)
         int s = i, vis = 0, lastsp = -1;
 
         /* 不换行模式：硬截断到可用宽度 */
-        if (!wrap) {
+        if (!st.wrap) {
             while (i < cnt && cps[i] != '\n' && vis + wds[i] <= uw) {
                 vis += wds[i];
                 ++i;
@@ -198,17 +198,9 @@ void canvas_draw(rect_t r_orig, const char *utf8, style_t st) {
 
     draw_rect(r, st);           /* 1. 背景 */
     draw_border(r_orig, st);    /* 2. 边框 */
-    draw_text(r_orig, utf8, st, false);/* 3. 文本 */
+    draw_text(r_orig, utf8, st);/* 3. 文本 */
 }
 
-void canvas_draw_warp(rect_t r_orig, const char *utf8, style_t st) {
-    rect_t r = clip(r_orig);
-    if (r.w <= 0 || r.h <= 0) return;
-
-    draw_rect(r, st);           /* 1. 背景 */
-    draw_border(r_orig, st);    /* 2. 边框 */
-    draw_text(r_orig, utf8, st, true);  /* 3. 文本 */
-}
 
 /* ---------- 终端输出 ---------- */
 #define SEQ_LEN(x)  (sizeof(x)-1)

@@ -30,7 +30,6 @@ TEST(label, basic)
     LabelData left = {
         .text       = "Left label",
         .st         = { .fg = 7, .bg = 1, .text = 1, .rect = 1, .align_horz = 0, .align_vert = 1},
-        .auto_wrap  = 0
     };
     tui_node_add(root, label_new((TuiRect){2, 2, 15, 1}, NULL, &left));
 
@@ -38,15 +37,13 @@ TEST(label, basic)
     LabelData right = {
         .text       = "Right label",
         .st         = { .fg = 0, .bg = 2, .text = 1, .rect = 1, .align_horz = 2, .align_vert = 1 },
-        .auto_wrap  = 0
     };
     tui_node_add(root, label_new((TuiRect){20, 2, 15, 1}, NULL, &right));
 
     /* -------- 3. 自动换行长文本 -------- */
     LabelData wrap = {
         .text       = "This is a very long sentence which should wrap automatically when it reaches the boundary of the label rectangle.",
-        .st         = { .fg = 3, .bg = 4, .text = 1, .rect = 1, .border = 1, .align_horz = 1, .align_vert = 1, .border_st = 1 },
-        .auto_wrap  = 1
+        .st         = { .fg = 3, .bg = 4, .text = 1, .rect = 1, .border = 1, .align_horz = 1, .align_vert = 1, .border_st = 1, .wrap = 1 },
     };
     tui_node_add(root, label_new((TuiRect){2, 5, 35, 6}, NULL, &wrap));
 
