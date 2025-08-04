@@ -6,7 +6,7 @@
 static void inputbox_draw(TuiNode *ib, void *event);
 static void inputbox_focus(InputBoxData *d, TuiNode* ib, void *event);
 static void inputbox_func(InputBoxData *d) {}
-/* ----------------------------- 构造 -------------------------------- */
+
 TuiNode *inputbox_new(TuiRect r, InputBoxData *d) {
     TuiNode *n = tui_node_new(r.x, r.y, r.w, r.h);
     n->bits.focusable = 1;

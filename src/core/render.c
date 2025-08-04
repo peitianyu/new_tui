@@ -77,7 +77,7 @@ static void draw_border(rect_t r, style_t st) {
     style_t  *restrict sty = g_canvas.sty;
 
     /* 取出当前样式字符 */
-    int bs = (bs >= sizeof(g_border_tbl)/sizeof(g_border_tbl[0])) ? BORDER_LIGHT : st.border_st;
+    int bs = st.border_st % (sizeof(g_border_tbl)/sizeof(g_border_tbl[0]));
     const border_chars_t b = g_border_tbl[bs];
 
     /* 四个角 */
