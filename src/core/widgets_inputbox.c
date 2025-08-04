@@ -5,7 +5,7 @@
 
 static void inputbox_draw(TuiNode *ib, void *event);
 static void inputbox_focus(InputBoxData *d, TuiNode* ib, void *event);
-
+static void inputbox_func(InputBoxData *d) {}
 /* ----------------------------- 构造 -------------------------------- */
 TuiNode *inputbox_new(TuiRect r, InputBoxData *d) {
     TuiNode *n = tui_node_new(r.x, r.y, r.w, r.h);
@@ -27,8 +27,10 @@ TuiNode *inputbox_new(TuiRect r, InputBoxData *d) {
 static void inputbox_draw(TuiNode *ib, void *event) {
     InputBoxData *d = (InputBoxData *)ib->data;
     style_t st = d->st;
+    if(d->no_changed && ib->bits.focus == 0) { return; }
+    d->no_changed = 1;
 
-    if (ib->bits.focus) { inputbox_focus(d, ib, event); st.bg = 4; }
+    if (ib->bits.focus) { inputbox_focus(d, ib, event); if(d->func) d->func(d); st = d->st_focus; }
 
     /* 可视宽度（减去边框） */
     int bw = st.border ? 1 : 0;
@@ -78,9 +80,7 @@ static void inputbox_insert_char(InputBoxData *d, uint32_t ch) {
     int bytes = utf8_encode(ch, tmp);
     if (!bytes) { return; }
 
-    memmove(d->text + d->cursor + bytes,
-            d->text + d->cursor,
-            d->len - d->cursor + 1);
+    memmove(d->text + d->cursor + bytes, d->text + d->cursor, d->len - d->cursor + 1);
     memcpy(d->text + d->cursor, tmp, bytes);
     d->cursor += bytes;
     d->len += bytes;
@@ -99,9 +99,7 @@ static void inputbox_backspace(InputBoxData *d) {
     size_t step = (d->text + d->cursor) - prev;
     if (step > d->cursor) { return; }
 
-    memmove(d->text + d->cursor - step,
-            d->text + d->cursor,
-            d->len - d->cursor + 1);
+    memmove(d->text + d->cursor - step, d->text + d->cursor, d->len - d->cursor + 1);
     d->cursor -= step;
     d->len -= step;
 }
@@ -111,9 +109,7 @@ static void inputbox_delete(InputBoxData *d) {
     const char *next = d->text + d->cursor;
     utf8_decode(&next);
     size_t step = next - (d->text + d->cursor);
-    memmove(d->text + d->cursor,
-            d->text + d->cursor + step,
-            d->len - d->cursor - step + 1);
+    memmove(d->text + d->cursor, d->text + d->cursor + step, d->len - d->cursor - step + 1);
     d->len -= step;
 }
 

@@ -23,7 +23,8 @@ TEST(input, test) {
     TuiNode *root = create_root();
 
     InputBoxData ibox = {0};              
-    ibox.st = (style_t){ .fg = 7, .bg = 0, .text = 1, .rect = 1, .border = 1, .border_st = 3 };
+    ibox.st = (style_t){ .fg = 7, .bg = 0, .text = 1, .rect = 1, .border = 1, .border_st = 2 };
+    ibox.st_focus = (style_t){ .fg = 7, .bg = 3, .text = 1, .rect = 1, .border = 1, .border_st = 2, .border_fg = 2 };
     TuiNode *ib = inputbox_new((TuiRect){ 5, 5, 30, 3 }, &ibox);
     tui_node_add(root, ib);
 

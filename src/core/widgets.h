@@ -13,6 +13,7 @@ typedef struct ButtonData ButtonData;
 struct ButtonData {
     char *label;
     style_t st;
+    bool no_changed;
     void (*hover_func) (ButtonData *b);
     void (*focus_func) (ButtonData *b, void *event);
 };
@@ -25,7 +26,9 @@ struct InputBoxData {
     size_t      cap;           /* 缓冲区容量 */
     size_t      cursor;        /* 光标字符位置（0~len） */
     style_t     st;            /* 样式 */
+    style_t     st_focus;      /* 聚焦时的样式 */
     size_t      scroll_x;      /* 水平滚动偏移量（字符宽度单位） */
+    bool        no_changed;    /* 内容变化 */
     void (*func) (InputBoxData *d);
 };
 TuiNode *inputbox_new(TuiRect r, InputBoxData *data);
