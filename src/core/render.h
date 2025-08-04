@@ -51,6 +51,6 @@ void canvas_draw(rect_t r_orig, const char *utf8, style_t st);
 void canvas_flush_all(void);
 void canvas_flush(void);
 void canvas_cursor_move(int x, int y, int style);
-void canvas_cursor_hide(void);
+void canvas_cursor_clear(void);
 
 #endif // __RENDER_H__

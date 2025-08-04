@@ -222,15 +222,15 @@ static inline void render_cell_fast(int idx, char **p, int with_pos) {
 #define MAX_CELL_SIZE (64) // !注意: 渲染应该不超过这个数值
 void canvas_flush(void) {
     const int N = g_canvas.w * g_canvas.h;
-
+    
     int changes = 0;
     for (int i = 0; i < N; ++i) 
         changes += (g_canvas.buf[i] != g_last_canvas.buf[i] || g_canvas.sty[i].v != g_last_canvas.sty[i].v);
-    if (!changes) return;
+    if (!changes) goto flush_cursor;
 
     size_t cap = changes * MAX_CELL_SIZE;         
     char *buf  = malloc(cap);
-    if (!buf) return;
+    if (!buf) goto flush_cursor;
 
     char *ptr = buf;
     for (int i = 0; i < N; ++i) {
@@ -240,13 +240,16 @@ void canvas_flush(void) {
 
     printf("\e[?25l");
     fwrite(buf, 1, ptr - buf, stdout);
-    if(g_canvas.cursor.cursor_able) 
-        printf("\e[?25h\e[%d q\e[%d;%dH", g_canvas.cursor.st, g_canvas.cursor.y, g_canvas.cursor.x);
     fflush(stdout);
     free(buf);
 
     memcpy(g_last_canvas.buf, g_canvas.buf, N * sizeof(uint32_t));
     memcpy(g_last_canvas.sty, g_canvas.sty, N * sizeof(style_t));
+
+    flush_cursor:
+        if(g_canvas.cursor.cursor_able) 
+            printf("\e[?25h\e[%d q\e[%d;%dH", g_canvas.cursor.st, g_canvas.cursor.y, g_canvas.cursor.x);
+        fflush(stdout);
 }
 
 /* ---------- 全量刷新 ---------- */
@@ -279,6 +282,6 @@ void canvas_cursor_move(int x, int y, int style) {
     g_canvas.cursor.st = style;
 }
 
-void canvas_cursor_hide(void) {
+void canvas_cursor_clear(void) {
     g_canvas.cursor.cursor_able = 0;
 }

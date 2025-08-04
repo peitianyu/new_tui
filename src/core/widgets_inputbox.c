@@ -1,4 +1,3 @@
-/* widgets_inputbox.c */
 #include "widgets.h"
 #include <string.h>
 #include <stdlib.h>
@@ -8,8 +7,7 @@ static void inputbox_draw(TuiNode *ib, void *event);
 static void inputbox_focus(InputBoxData *d, TuiNode* ib, void *event);
 
 /* ----------------------------- 构造 -------------------------------- */
-TuiNode *inputbox_new(TuiRect r, InputBoxData *d)
-{
+TuiNode *inputbox_new(TuiRect r, InputBoxData *d) {
     TuiNode *n = tui_node_new(r.x, r.y, r.w, r.h);
     n->bits.focusable = 1;
     n->data = d;
@@ -30,34 +28,27 @@ static void inputbox_draw(TuiNode *ib, void *event) {
     InputBoxData *d = (InputBoxData *)ib->data;
     style_t st = d->st;
 
-    /* 处理键鼠事件 */
-    if (ib->bits.focus) {
-        inputbox_focus(d, ib, event);
-    }
+    if (ib->bits.focus) { inputbox_focus(d, ib, event); st.bg = 4; }
 
     /* 可视宽度（减去边框） */
     int bw = st.border ? 1 : 0;
     int vis_w = ib->bounds.w - 2 * bw;
-    if (vis_w <= 0) {
-        return;
-    }
+    if (vis_w <= 0) { return; }
 
     /* 计算字符级别的光标偏移量（以字符宽度为单位） */
     int cursor_col = utf8_swidth_len(d->text, d->cursor);
 
     /* 水平滚动：保证光标在可见区域 */
     int scroll = d->scroll_x;
-    if (cursor_col < scroll)
-        scroll = cursor_col;
-    else if (cursor_col >= scroll + vis_w)
-        scroll = cursor_col - vis_w + 1;
+    if (cursor_col < scroll)               { scroll = cursor_col; }
+    else if (cursor_col >= scroll + vis_w) { scroll = cursor_col - vis_w + 1; }
     d->scroll_x = scroll;
 
     /* 从滚动位置开始渲染 */
     const char *start = d->text;
     const char *p = start;
     int tmp_scroll = scroll;
-    while (tmp_scroll-- > 0) utf8_decode(&p);  /* 跳过 scroll 个字符 */
+    while (tmp_scroll-- > 0) { utf8_decode(&p); }  /* 跳过 scroll 个字符 */
 
     /* 构造可见文本子串 */
     char vis_buf[vis_w * 4 + 1];  /* UTF-8 最多 4 字节/字符 */
@@ -75,11 +66,10 @@ static void inputbox_draw(TuiNode *ib, void *event) {
     canvas_draw((rect_t){ ib->abs_x, ib->abs_y, ib->bounds.w, ib->bounds.h }, vis_buf, st);
 
     /* 光标位置（屏幕坐标） */
+    if(!ib->bits.focus) { return; }
     int cursor_scr_x = ib->abs_x + bw + (cursor_col - d->scroll_x);
     int cursor_scr_y = ib->abs_y + bw;
     canvas_cursor_move(cursor_scr_x+1, cursor_scr_y+1, 1);
-
-    d->st = st;
 }
 
 /* ----------------------------- 编辑操作 ---------------------------- */
@@ -90,9 +80,7 @@ static void inputbox_insert_char(InputBoxData *d, uint32_t ch) {
     }
     char tmp[4];
     int bytes = utf8_encode(ch, tmp);
-    if (!bytes) {
-        return;
-    }
+    if (!bytes) { return; }
 
     memmove(d->text + d->cursor + bytes,
             d->text + d->cursor,
@@ -103,9 +91,7 @@ static void inputbox_insert_char(InputBoxData *d, uint32_t ch) {
 }
 
 static void inputbox_backspace(InputBoxData *d) {
-    if (d->cursor == 0) {
-        return;
-    }
+    if (d->cursor == 0) { return; }
     const char *prev = d->text + d->cursor;
     utf8_decode(&prev);
     size_t step = (d->text + d->cursor) - prev;
@@ -117,9 +103,7 @@ static void inputbox_backspace(InputBoxData *d) {
 }
 
 static void inputbox_delete(InputBoxData *d) {
-    if (d->cursor >= d->len) {
-        return;
-    }
+    if (d->cursor >= d->len) { return; }
     const char *next = d->text + d->cursor;
     utf8_decode(&next);
     size_t step = next - (d->text + d->cursor);
@@ -131,10 +115,16 @@ static void inputbox_delete(InputBoxData *d) {
 
 static void inputbox_move_cursor(InputBoxData *d, int dir) {
     if (dir < 0 && d->cursor > 0) {
-        const char *prev = d->text + d->cursor;
-        utf8_decode(&prev);
-        d->cursor = prev - d->text;
+        /* 向前移动一个字符 */
+        const char *p = d->text;
+        size_t prev_pos = 0;
+        while (p < d->text + d->cursor) {
+            prev_pos = p - d->text;
+            utf8_decode(&p);
+        }
+        d->cursor = prev_pos;
     } else if (dir > 0 && d->cursor < d->len) {
+        /* 向后移动一个字符 */
         const char *next = d->text + d->cursor;
         utf8_decode(&next);
         d->cursor = next - d->text;
@@ -148,10 +138,7 @@ static void inputbox_clear_line(InputBoxData *d) {
 
 /* ----------------------------- 事件处理 ---------------------------- */
 static void inputbox_focus(InputBoxData *d, TuiNode* ib, void *event) {
-    if (!event) {
-        return;
-    }
-
+    if (!event) { return; }
     event_t *ev = (event_t *)event;
 
     if (ev->type == EVENT_KEY) {

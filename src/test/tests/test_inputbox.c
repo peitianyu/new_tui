@@ -2,8 +2,7 @@
 #include "core/c_test.h"
 #include "core/log.h"
 
-static inline TuiNode *create_root(void)
-{
+static inline TuiNode *create_root(void) {
     int w, h;
     term_size(&w, &h);
     term_init();
@@ -12,15 +11,14 @@ static inline TuiNode *create_root(void)
     return tui_node_new(0, 0, w, h);
 }
 
-static void update(TuiNode *r, void *ev)
-{
+static void update(TuiNode *r, void *ev) {
+    canvas_cursor_clear();
     tui_calc(r);
     tui_draw(r, ev);
     canvas_flush();
 }
 
-TEST(input, test)
-{
+TEST(input, test) {
     setlocale(LC_ALL, "");
     TuiNode *root = create_root();
 
@@ -30,7 +28,6 @@ TEST(input, test)
     tui_node_add(root, ib);
 
     update(root, NULL);
-
     while (1) {
         event_t ev = read_event();
         if (ev.type == EVENT_KEY && ev.key.key[0] == K_ESCAPE)
