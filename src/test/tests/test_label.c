@@ -42,10 +42,10 @@ TEST(label, basic)
 
     /* -------- 3. 自动换行长文本 -------- */
     LabelData wrap = {
-        .text       = "This is a very long sentence which should wrap automatically when it reaches the boundary of the label rectangle.",
+        .text       = "This is a very long sentence which should wrap automatically when it reaches the boundary of the label rectangle. 支持中文、Emoji 😊 与样式。",
         .st         = { .fg = 3, .bg = 4, .text = 1, .rect = 1, .border = 1, .align_horz = 1, .align_vert = 1, .border_st = 1, .wrap = 1 },
     };
-    tui_node_add(root, label_new((TuiRect){2, 5, 35, 6}, NULL, &wrap));
+    tui_node_add(root, label_new((TuiRect){2, 5, 35, 7}, NULL, &wrap));
 
     /* -------- 主循环 -------- */
     update_and_draw(root, NULL);
