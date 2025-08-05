@@ -5,13 +5,11 @@
 
 static void inputbox_draw(TuiNode *ib, void *event);
 static void inputbox_focus(InputBoxData *d, TuiNode* ib, void *event);
-static void inputbox_func(InputBoxData *d) {}
 
 TuiNode *inputbox_new(TuiRect r, InputBoxData *d) {
     TuiNode *n = tui_node_new(r.x, r.y, r.w, r.h);
     n->bits.focusable = 1;
     d->state = -1;
-    if(d->func == NULL) d->func = inputbox_func;
     n->data = d;
     n->draw = inputbox_draw;
 
@@ -32,7 +30,7 @@ static void inputbox_draw(TuiNode *ib, void *event) {
     if (!ib->bits.focus) { if (d->state == 0) return; d->state = 0; }
     else                 { d->state = -1; }
 
-    if (ib->bits.focus) { inputbox_focus(d, ib, event); if(d->func) d->func(d); st = d->st_focus; }
+    if (ib->bits.focus) { inputbox_focus(d, ib, event); st = d->st_focus; }
 
     /* 可视宽度（减去边框） */
     int bw = st.border ? 1 : 0;

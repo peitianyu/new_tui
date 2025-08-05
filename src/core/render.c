@@ -1,4 +1,5 @@
 #include "render.h"
+#include "color_palette.h"
 
 /* ---------- 画布 API ---------- */
 static canvas_t g_canvas = {0};
@@ -201,27 +202,6 @@ void canvas_draw(rect_t r_orig, const char *utf8, style_t st) {
     draw_text(r_orig, utf8, st);/* 3. 文本 */
 }
 
-
-/* ---------- 终端输出 ---------- */
-#define SEQ_LEN(x)  (sizeof(x)-1)
-static const char *FG[16] = {
-    "\e[30m","\e[34m","\e[35m","\e[32m","\e[31m","\e[90m","\e[37m","\e[97m",
-    "\e[91m","\e[33m","\e[93m","\e[92m","\e[36m","\e[95m","\e[96m","\e[94m" };
-static const char *BG[16] = {
-    "\e[40m","\e[44m","\e[45m","\e[42m","\e[41m","\e[100m","\e[47m","\e[107m",
-    "\e[101m","\e[43m","\e[103m","\e[102m","\e[106m","\e[105m","\e[106m","\e[104m" };
-static const uint8_t FG_LEN[16] = {       
-    SEQ_LEN("\e[30m"),SEQ_LEN("\e[34m"),SEQ_LEN("\e[35m"),SEQ_LEN("\e[32m"),
-    SEQ_LEN("\e[31m"),SEQ_LEN("\e[90m"),SEQ_LEN("\e[37m"),SEQ_LEN("\e[97m"),
-    SEQ_LEN("\e[91m"),SEQ_LEN("\e[33m"),SEQ_LEN("\e[93m"),SEQ_LEN("\e[92m"),
-    SEQ_LEN("\e[36m"),SEQ_LEN("\e[95m"),SEQ_LEN("\e[96m"),SEQ_LEN("\e[94m") };
-static const uint8_t BG_LEN[16] = {
-    SEQ_LEN("\e[40m"),SEQ_LEN("\e[44m"),SEQ_LEN("\e[45m"),SEQ_LEN("\e[42m"),
-    SEQ_LEN("\e[41m"),SEQ_LEN("\e[100m"),SEQ_LEN("\e[47m"),SEQ_LEN("\e[107m"),
-    SEQ_LEN("\e[101m"),SEQ_LEN("\e[43m"),SEQ_LEN("\e[103m"),SEQ_LEN("\e[102m"),
-    SEQ_LEN("\e[106m"),SEQ_LEN("\e[105m"),SEQ_LEN("\e[106m"),SEQ_LEN("\e[104m") };
-#undef SEQ_LEN
-
 static inline void render_cell_fast(int idx, char **p, int with_pos) {
     uint32_t cp = g_canvas.buf[idx];
     if (!cp) return;
@@ -243,9 +223,9 @@ static inline void render_cell_fast(int idx, char **p, int with_pos) {
     if (st.bold)      { memcpy(dst, "\e[1m", 4);  dst += 4; }
     if (st.strike)    { memcpy(dst, "\e[9m", 4);  dst += 4; }
     
-    int fg = (st.border) ? 15-st.border_fg : st.fg;
-    memcpy(dst, FG[fg], FG_LEN[fg]);       dst += FG_LEN[fg];
-    memcpy(dst, BG[st.bg], BG_LEN[st.bg]); dst += BG_LEN[st.bg];
+    int fg = (st.border) ? st.border_fg : st.fg;
+    memcpy(dst, RENDER_FG[fg], RENDER_FG_LEN[fg]);       dst += RENDER_FG_LEN[fg];
+    memcpy(dst, RENDER_BG[st.bg], RENDER_BG_LEN[st.bg]); dst += RENDER_BG_LEN[st.bg];
     memcpy(dst, ch, ch_len);               dst += ch_len;
     memcpy(dst, "\e[0m", 4);               dst += 4;
 
