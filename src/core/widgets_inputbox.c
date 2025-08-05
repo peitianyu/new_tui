@@ -10,6 +10,7 @@ static void inputbox_func(InputBoxData *d) {}
 TuiNode *inputbox_new(TuiRect r, InputBoxData *d) {
     TuiNode *n = tui_node_new(r.x, r.y, r.w, r.h);
     n->bits.focusable = 1;
+    d->state = -1;
     if(d->func == NULL) d->func = inputbox_func;
     n->data = d;
     n->draw = inputbox_draw;
@@ -27,6 +28,10 @@ TuiNode *inputbox_new(TuiRect r, InputBoxData *d) {
 static void inputbox_draw(TuiNode *ib, void *event) {
     InputBoxData *d = (InputBoxData *)ib->data;
     style_t st = d->st;
+    
+    if (!ib->bits.focus) { if (d->state == 0) return; d->state = 0; }
+    else                 { d->state = -1; }
+
     if (ib->bits.focus) { inputbox_focus(d, ib, event); if(d->func) d->func(d); st = d->st_focus; }
 
     /* 可视宽度（减去边框） */
@@ -113,7 +118,6 @@ static void inputbox_move_cursor(InputBoxData *d, int dir) {
 static void inputbox_focus(InputBoxData *d, TuiNode* ib, void *event) {
     if (!event) { return; }
     event_t *ev = (event_t *)event;
-
     if (ev->type == EVENT_KEY) {
         key_event_t *k = &ev->key;
         for (int i = 0; i < k->num; ++i) {

@@ -10,6 +10,7 @@ TuiNode *button_new(TuiRect r, const char *label, ButtonData *data) {
     b->bits.focusable = 1;  
     if(!data->hover_func) { data->hover_func = hover_func; }
     if(!data->focus_func) { data->focus_func = focus_func; }
+    data->state = -1;
     b->data = data;
     b->draw = button_draw;
     return b;
@@ -26,14 +27,19 @@ static void focus_func(ButtonData *b, void *event) {
 static void button_draw(TuiNode *btn, void *event) {
     if (!btn) return;
     
-    ButtonData *data = (ButtonData *)btn->data;
+    ButtonData *d = (ButtonData *)btn->data;
 
-    style_t st = data->st;
-    if(btn->bits.hover == 1)      { data->hover_func(data); }
-    else if(btn->bits.focus == 1) { data->focus_func(data, event); }
+    int8_t prev_state = d->state;
+    int8_t curr_state = (btn->bits.hover == 1) ? 1 : (btn->bits.focus == 1) ? 2 : 0;
+    if (prev_state == curr_state) return;
+    d->state = curr_state;
 
-    canvas_draw((rect_t){ btn->abs_x, btn->abs_y, btn->bounds.w, btn->bounds.h }, data->label, data->st);
-    data->st = st;
+    style_t st = d->st;
+    if(btn->bits.hover == 1)      { d->hover_func(d);}
+    else if(btn->bits.focus == 1) { d->focus_func(d, event);}
+
+    canvas_draw((rect_t){ btn->abs_x, btn->abs_y, btn->bounds.w, btn->bounds.h }, d->label, d->st);
+    d->st = st;
 
     btn->bits.focus = 0;
 }

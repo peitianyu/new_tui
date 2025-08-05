@@ -12,6 +12,7 @@ typedef struct LabelData LabelData;
 struct LabelData {
     char *text;
     style_t st;
+    int8_t state;
 };
 TuiNode *label_new(TuiRect r, const char *text, LabelData *data);
 
@@ -19,6 +20,7 @@ typedef struct ButtonData ButtonData;
 struct ButtonData {
     char *label;
     style_t st;
+    int8_t state;
     void (*hover_func) (ButtonData *b);
     void (*focus_func) (ButtonData *b, void *event);
 };
@@ -33,6 +35,7 @@ struct InputBoxData {
     style_t     st;            /* 样式 */
     style_t     st_focus;      /* 聚焦时的样式 */
     size_t      scroll_x;      /* 水平滚动偏移量（字符宽度单位） */
+    int8_t state;
     void (*func) (InputBoxData *d);
 };
 TuiNode *inputbox_new(TuiRect r, InputBoxData *data);
