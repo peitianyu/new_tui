@@ -42,18 +42,23 @@ struct InputBoxData {
 TuiNode *inputbox_new(TuiRect r, InputBoxData *data);
 
 
-typedef struct { size_t start, end; style_t style; } RichStyle;
-typedef struct RichTextData {
-    char        *text;         /* 当前内容（动态分配/修改） */
-    size_t      len;           /* 已用长度 */
-    size_t      cap;           /* 缓冲区容量 */
-    style_t     default_style; /* 默认样式 */
-    RichStyle*  styles;        /* 样式列表 */
-    size_t      style_cnt;     /* 样式个数 */
-    int8_t      state;         /* 聚焦状态 */
-    size_t      scroll_x, scroll_y;
-    size_t      cursor_x, cursor_y;
+typedef struct { size_t off, len, char_cnt; } RichLine;
+typedef struct {
+    char   *text;
+    size_t  len, cap;
+
+    RichLine *lines;
+    size_t    line_cnt, line_cap;
+
+    style_t default_style;
+    struct { size_t start, end; style_t style; } *styles;
+    size_t style_cnt, style_cap;
+
+    size_t cursor;
+    int scroll_x, scroll_y;
+    int8_t state;
 } RichTextData;
-TuiNode* richtext_new(TuiRect rect, RichTextData* data);
+
+TuiNode *richtext_new(TuiRect r, RichTextData *data);
 
 #endif // __WIDGETS_H__

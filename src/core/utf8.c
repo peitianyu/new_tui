@@ -64,20 +64,9 @@ int utf8_encode(uint32_t cp, char dst[4])
 /* ---------- 宽度 ---------- */
 int utf8_width(uint32_t cp)
 {
-    /* 0x00–0x7F：直接查表 */
-    static const uint8_t w0[128] = {
-        /* 00–1F：控制字符宽 0 */
-        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
-        /* 20–7F：其余 ASCII 宽 1 */
-        1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,
-        1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,
-        1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,
-        1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,
-        1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,
-        1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,0
-    };
-    if (cp < 0x80) return w0[cp];
+    if (cp < 0x20) return 0;   // 控制字符宽度0
+    if (cp < 0x7F) return 1;   // ASCII字符宽度1
+    if (cp == 0x7F) return 0;  // DEL字符宽度0
 
     /* 零宽格式控制字符 */
     if (cp == 0x200B || cp == 0x200C || cp == 0x200D || cp == 0xFE0F)
@@ -87,10 +76,9 @@ int utf8_width(uint32_t cp)
     if (cp < 0x300) return 1;
 
     static const struct { uint32_t lo, hi; } wide[] = {
-        {0x1100,0x115F}, {0x2329,0x232A}, {0x2E80,0x303E},
-        {0x3040,0xA4CF}, {0xAC00,0xD7A3}, {0xF900,0xFAFF},
-        {0xFE10,0xFE19}, {0xFE30,0xFE6F}, {0xFF00,0xFF60},
-        {0xFFE0,0xFFE6}, {0x1F600,0x1F64F},
+        {0x1100,0x115F}, {0x2329,0x232A}, {0x2E80,0x303E}, {0x3040,0xA4CF}, 
+        {0x4E00,0x9FFF}, {0xAC00,0xD7A3}, {0xF900,0xFAFF}, {0xFE10,0xFE19}, 
+        {0xFE30,0xFE6F}, {0xFF00,0xFF60}, {0xFFE0,0xFFE6}, {0x1F600,0x1F64F},
         {0x20000,0x2FFFD}, {0x30000,0x3FFFD}
     };
     size_t l = 0, r = sizeof(wide)/sizeof(wide[0]);
