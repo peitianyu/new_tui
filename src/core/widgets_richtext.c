@@ -308,6 +308,16 @@ static void richtext_draw(TuiNode *n, void *event)
                             .bg  = d->default_style.bg });
     }
 
+    if (d->show_scroll) {
+        const int sb_x = n->abs_x + n->bounds.w - bw - 1;               // 最右列
+        const int sb_h = vis_h;                                         // 指示器总高度
+        const int slot_h = MAX(1, sb_h * vis_h / (int)d->line_cnt);     // 滑块高
+        const int slot_y = sb_h * d->scroll_y / (int)d->line_cnt;       // 滑块偏移
+
+        canvas_draw((rect_t){ sb_x, n->abs_y + bw, 1, sb_h }, "", (style_t){ .bg = 11, .rect = 1 });
+        canvas_draw((rect_t){ sb_x, n->abs_y + bw + slot_y, 1, 1 }, " ", (style_t){ .fg = 5, .text = 1 });
+    }
+
     /* 光标 */
     if (n->bits.focus) {
         size_t cur_line, cur_col;

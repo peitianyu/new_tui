@@ -28,7 +28,7 @@ TEST(richtext, test) {
     rt.len = strlen(rt.text);
     rt.cap = rt.len + 1;
     rt.show_line_no = 0;
-    rt.show_scroll  = 0;
+    rt.show_scroll  = 1;
     TuiNode *richtext = richtext_new((TuiRect){5, 5, 50, 10}, &rt);
     tui_node_add(root, richtext);
 
