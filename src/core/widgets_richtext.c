@@ -58,6 +58,31 @@ static void build_lines(RichTextData *d) {
     d->line_cnt = line;
 }
 
+static void richtext_scroll_to_cursor(RichTextData *d, const TuiNode *rt)
+{
+    if (!rt || !d) return;
+
+    const int bw = d->default_style.border ? 1 : 0;
+    const int vis_w = rt->bounds.w - 2 * bw;
+    const int vis_h = rt->bounds.h - 2 * bw;
+    if (vis_w <= 0 || vis_h <= 0) return;
+
+    size_t cur_line, cur_col;
+    pos_to_line_col(d, d->cursor, &cur_line, &cur_col);
+
+    /* 纵向滚动 */
+    if ((int)cur_line < d->scroll_y)
+        d->scroll_y = (int)cur_line;
+    else if ((int)cur_line >= d->scroll_y + vis_h)
+        d->scroll_y = (int)cur_line - vis_h + 1;
+
+    /* 横向滚动 */
+    if ((int)cur_col < d->scroll_x)
+        d->scroll_x = (int)cur_col;
+    else if ((int)cur_col >= d->scroll_x + vis_w)
+        d->scroll_x = (int)cur_col - vis_w + 1;
+}
+
 /* -------------------- TuiNode 回调 -------------------- */
 static void richtext_draw(TuiNode *n, void *event);
 static void richtext_focus(RichTextData *d, TuiNode *rt, void *event);
@@ -90,6 +115,8 @@ static void richtext_draw(TuiNode *n, void *event)
     RichTextData *d = n->data;
     if (!n->bits.focus && d->state == 0) return;
     if (n->bits.focus) richtext_focus(d, n, event);
+
+    richtext_scroll_to_cursor(d, n);
 
     const int bw = d->default_style.border ? 1 : 0;
     const int vis_w = n->bounds.w - 2 * bw;
@@ -130,6 +157,7 @@ static void richtext_draw(TuiNode *n, void *event)
         }
     }
 }
+
 
 static void richtext_focus(RichTextData *d, TuiNode *rt, void *event)
 {
@@ -184,6 +212,44 @@ static void richtext_focus(RichTextData *d, TuiNode *rt, void *event)
                             d->cursor = line_col_to_pos(d, line, d->lines[line].len);
                         }
                         break;
+                    case K_PGUP:
+                        {
+                            const int vis_h = rt->bounds.h - 2 * (d->default_style.border ? 1 : 0);
+                            if (d->scroll_y > 0) {
+                                /* 把 scroll_y 和光标一起上移一页 */
+                                size_t new_scroll = (d->scroll_y > (size_t)vis_h)
+                                                    ? d->scroll_y - vis_h : 0;
+                                size_t line, col;
+                                pos_to_line_col(d, d->cursor, &line, &col);
+                                if (line > (size_t)vis_h)
+                                    line -= vis_h;
+                                else
+                                    line = 0;
+                                d->cursor = line_col_to_pos(d, line, col);
+                                d->scroll_y = new_scroll;
+                            }
+                            break;
+                        }
+                    case K_PGDN:
+                        {
+                            const int bw  = d->default_style.border ? 1 : 0;
+                            const int vis_h = rt->bounds.h - 2 * bw;
+                            size_t max_scroll = (d->line_cnt > (size_t)vis_h)
+                                                ? d->line_cnt - vis_h : 0;
+                            if (d->scroll_y < max_scroll) {
+                                size_t new_scroll = d->scroll_y + vis_h;
+                                if (new_scroll > max_scroll) new_scroll = max_scroll;
+
+                                size_t line, col;
+                                pos_to_line_col(d, d->cursor, &line, &col);
+                                line += vis_h;
+                                if (line >= d->line_cnt) line = d->line_cnt ? d->line_cnt - 1 : 0;
+
+                                d->cursor = line_col_to_pos(d, line, col);
+                                d->scroll_y = new_scroll;
+                            }                                   
+                            break;
+                        }
                     case K_BACKSPACE:
                         if (d->cursor > 0) {
                             size_t prev = utf8_prev(d->text, d->cursor);
@@ -213,7 +279,6 @@ static void richtext_focus(RichTextData *d, TuiNode *rt, void *event)
                         break;
                 }
             } else {
-                // Insert character
                 if (d->len + 4 >= d->cap) {
                     d->cap *= 2;
                     d->text = realloc(d->text, d->cap);
