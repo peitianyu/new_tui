@@ -27,6 +27,8 @@ TEST(richtext, test) {
     rt.text = strdup("Hello 世界！\nThis is a RichText widget demo.\n支持中文、Emoji 😊 与样式。");
     rt.len = strlen(rt.text);
     rt.cap = rt.len + 1;
+    rt.show_line_no = 0;
+    rt.show_scroll  = 0;
     TuiNode *richtext = richtext_new((TuiRect){5, 5, 50, 10}, &rt);
     tui_node_add(root, richtext);
 

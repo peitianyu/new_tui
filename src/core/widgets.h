@@ -57,6 +57,14 @@ typedef struct {
     size_t cursor;
     int scroll_x, scroll_y;
     int8_t state;
+    
+    union {
+        struct {
+            uint8_t show_line_no : 1;
+            uint8_t show_scroll  : 1;
+        };
+        uint8_t option;
+    };
 } RichTextData;
 
 TuiNode *richtext_new(TuiRect r, RichTextData *data);

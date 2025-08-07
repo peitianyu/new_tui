@@ -46,14 +46,14 @@ typedef struct {
     mouse_button_t      button;
     mouse_event_type_t  type;
     int                 x, y, scroll;
-} mouse_data_t;
+} mouse_event_t;
 
 typedef enum { EVENT_NONE, EVENT_KEY, EVENT_MOUSE } event_type_t;
 typedef struct {
     event_type_t type;
     union {
         key_event_t key;
-        mouse_data_t mouse;
+        mouse_event_t mouse;
     };
 } event_t;
 
