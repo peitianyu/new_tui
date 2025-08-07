@@ -42,7 +42,7 @@ struct InputBoxData {
 TuiNode *inputbox_new(TuiRect r, InputBoxData *data);
 
 
-typedef struct { size_t off, len, char_cnt; } RichLine;
+typedef struct { size_t off, len; int lineno;} RichLine;
 typedef struct {
     char   *text;
     size_t  len, cap;
