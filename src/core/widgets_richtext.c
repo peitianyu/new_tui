@@ -319,8 +319,7 @@ static void richtext_draw(TuiNode *n, void *event)
 
     /* 1) 行号栏背景 */
     if (d->show_line_no) {
-        canvas_draw((rect_t){ n->abs_x + L.bw, L.inner_y - 1, L.gutter_w, L.vis_h },
-                    "", (style_t){ .bg = 7, .rect = 1 });
+        canvas_draw((rect_t){ n->abs_x + L.bw, L.inner_y - 1, L.gutter_w, L.vis_h }, "", d->line_no_style);
     }
 
     /* 2) 绘制可见行（文本 & 行号） */
@@ -334,8 +333,7 @@ static void richtext_draw(TuiNode *n, void *event)
         if (d->show_line_no) {
             char gutter[8];
             snprintf(gutter, sizeof(gutter), "%4d", ln->lineno);
-            canvas_draw((rect_t){ n->abs_x + L.bw+1, L.inner_y + row-1, L.gutter_w - 1, 1 },
-                        gutter, (style_t){ .fg = 7, .text = 1 });
+            canvas_draw((rect_t){ n->abs_x + L.bw+1, L.inner_y + row-1, L.gutter_w - 1, 1 }, gutter, d->line_no_style);
         }
 
         /* 文本内容裁剪显示 */
@@ -366,9 +364,9 @@ static void richtext_draw(TuiNode *n, void *event)
         const int slot_h = MAX(1, sb_h * L.vis_h / (int)d->line_cnt);
         const int slot_y = sb_h * d->scroll_y / (int)d->line_cnt;
 
-        canvas_draw((rect_t){ sb_x, L.inner_y - 1, 1, sb_h }, "", (style_t){ .bg = 11, .rect = 1 });
+        canvas_draw((rect_t){ sb_x, L.inner_y - 1, 1, sb_h }, "", d->scroll_style);
 
-        canvas_draw((rect_t){ sb_x, L.inner_y - 1 + slot_y, 1, 1 }, "█", (style_t){ .fg = 4, .text = 1});
+        canvas_draw((rect_t){ sb_x, L.inner_y - 1 + slot_y, 1, 1 }, "█", d->scroll_style);
     }
 
     /* 4) 底部信息栏 */
@@ -376,16 +374,14 @@ static void richtext_draw(TuiNode *n, void *event)
         char info[128];
         size_t cur_line, cur_col;
         rt_pos_to_line_col(d, d->cursor, &cur_line, &cur_col);
-        snprintf(info, sizeof(info), "Ln %zu, Col %zu  |  %zu lines  |  UTF-8  ",
+        snprintf(info, sizeof(info), "  Ln %zu, Col %zu  |  %zu lines  |  UTF-8  ",
                 cur_line + 1, cur_col + 1, d->line_cnt);
         canvas_draw((rect_t){ n->abs_x + L.bw,
                             n->abs_y + n->bounds.h - L.bw - 1,
-                            n->bounds.w - 2 * L.bw, 1 },"", (style_t){ .bg = 8, .rect = 1 });
+                            n->bounds.w - 2 * L.bw, 1 },"", d->info_style);
         canvas_draw((rect_t){ n->abs_x + L.bw,
                             n->abs_y + n->bounds.h - L.bw - 1,
-                            n->bounds.w - 2 * L.bw, 1 },
-                    info,
-                    (style_t){ .fg = 0, .text = 1, .align_horz = 2 });
+                            n->bounds.w - 2 * L.bw, 1 }, info, d->info_style);
     }
     
     /* 5) 光标 */

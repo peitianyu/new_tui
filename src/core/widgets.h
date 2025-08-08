@@ -50,7 +50,7 @@ typedef struct {
     RichLine *lines;
     size_t    line_cnt, line_cap;
 
-    style_t default_style;
+    
     struct { size_t start, end; style_t style; } *styles;
     size_t style_cnt, style_cap;
 
@@ -66,6 +66,10 @@ typedef struct {
         };
         uint8_t option;
     };
+    style_t default_style;
+    style_t info_style;
+    style_t line_no_style;
+    style_t scroll_style;
 } RichTextData;
 
 TuiNode *richtext_new(TuiRect r, RichTextData *data);
