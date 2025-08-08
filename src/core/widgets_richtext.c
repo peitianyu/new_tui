@@ -37,7 +37,7 @@ static inline rt_layout_t rt_calc_layout(const RichTextData *d, const TuiNode *r
     L.bw       = d->default_style.border ? 1 : 0;
     L.scroll_w = d->show_scroll ? 2 : 0;
     L.gutter_w = d->show_line_no ? 6 : 0;   /* 行号 6 字符宽 */
-    L.info_h   = 1;                        /* 底部信息栏固定 1 行 */
+    L.info_h   = d->show_info ? 1 : 0;                        /* 底部信息栏固定 1 行 */
 
     /* 左上角留白 1 字符 */
     L.inner_x = rt->abs_x + L.bw + 1 + L.gutter_w;
@@ -367,7 +367,7 @@ static void richtext_draw(TuiNode *n, void *event)
         const int slot_y = sb_h * d->scroll_y / (int)d->line_cnt;
 
         canvas_draw((rect_t){ sb_x, L.inner_y - 1, 1, sb_h }, "", (style_t){ .bg = 11, .rect = 1 });
-        canvas_draw((rect_t){ sb_x, L.inner_y - 1 + slot_y, 1, 1 }, " ", (style_t){ .fg = 7, .text = 1 });
+        canvas_draw((rect_t){ sb_x, L.inner_y - 1 + slot_y, 1, 1 }, " ", (style_t){ .fg = 3, .bg = 11, .text = 1, .rect = 1 });
     }
 
     /* 4) 底部信息栏 */
