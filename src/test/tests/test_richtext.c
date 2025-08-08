@@ -23,11 +23,11 @@ TEST(richtext, test) {
     TuiNode *root = create_root();
 
     RichTextData rt = {0};
-    rt.default_style = (style_t){ .fg = 7, .bg = 1, .text = 1, .rect = 1, .border = 1, .border_st = 3 };
+    rt.default_style = (style_t){ .fg = 7, .bg = 1, .text = 1, .rect = 1, .border = 0, .border_st = 3 };
     rt.text = strdup("Hello 世界！\nThis is a RichText widget demo.\n支持中文、Emoji 😊 与样式。");
     rt.len = strlen(rt.text);
     rt.cap = rt.len + 1;
-    rt.show_line_no = 0;
+    rt.show_line_no = 1;
     rt.show_scroll  = 1;
     TuiNode *richtext = richtext_new((TuiRect){5, 5, 50, 10}, &rt);
     tui_node_add(root, richtext);

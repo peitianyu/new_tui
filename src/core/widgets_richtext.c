@@ -1,6 +1,8 @@
+/* widgets_richtext.c  ——  完整版本（含行号栏 + 底部信息栏） */
 #include "widgets.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 /* ---------- 基础宏 ---------- */
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -8,7 +10,47 @@
 #define CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 
 /* =========================================================
-* 行信息相关工具（原 build_lines / pos_to_line_col 等）
+* 统一布局
+* =========================================================*/
+typedef struct {
+    /* 原始边框/滚动条 */
+    int bw;
+    int scroll_w;
+
+    /* 新增区域尺寸（字符单位） */
+    int gutter_w;   /* 行号栏宽 */
+    int info_h;     /* 底栏高 */
+
+    /* 内容区左上角绝对坐标（含留白） */
+    int inner_x;
+    int inner_y;
+
+    /* 可编辑区域尺寸（除行号栏与底栏后） */
+    int vis_w;
+    int vis_h;
+} rt_layout_t;
+
+static inline rt_layout_t rt_calc_layout(const RichTextData *d, const TuiNode *rt)
+{
+    rt_layout_t L = {0};
+
+    L.bw       = d->default_style.border ? 1 : 0;
+    L.scroll_w = d->show_scroll ? 2 : 0;
+    L.gutter_w = d->show_line_no ? 6 : 0;   /* 行号 6 字符宽 */
+    L.info_h   = 1;                        /* 底部信息栏固定 1 行 */
+
+    /* 左上角留白 1 字符 */
+    L.inner_x = rt->abs_x + L.bw + 1 + L.gutter_w;
+    L.inner_y = rt->abs_y + L.bw + 1;
+
+    /* 可编辑矩形宽高 */
+    L.vis_w = rt->bounds.w - 2 * L.bw - L.scroll_w - L.gutter_w;
+    L.vis_h = rt->bounds.h - 2 * L.bw - L.info_h;
+    return L;
+}
+
+/* =========================================================
+* 行信息相关工具
 * =========================================================*/
 static void rt_count_lines(const char *text, size_t len, size_t *out_cnt)
 {
@@ -22,15 +64,13 @@ static void rt_build_lines(RichTextData *d)
     size_t new_cnt;
     rt_count_lines(d->text, d->len, &new_cnt);
 
-    /* 按需扩容 */
     if (new_cnt > d->line_cap) {
         d->line_cap = new_cnt + 16;
         d->lines    = realloc(d->lines, d->line_cap * sizeof(RichLine));
     }
 
-    /* 重新填行表 */
     size_t line = 0, start = 0;
-    int    lineno = 1;
+    int lineno = 1;
     for (size_t i = 0; i < d->len; ++i) {
         if (d->text[i] == '\n') {
             d->lines[line++] = (RichLine){ start, i - start, lineno++ };
@@ -41,9 +81,8 @@ static void rt_build_lines(RichTextData *d)
     d->line_cnt      = line;
 }
 
-/* 把字节下标换成行列 */
 static void rt_pos_to_line_col(const RichTextData *d, size_t pos,
-                            size_t *line, size_t *col)
+                               size_t *line, size_t *col)
 {
     size_t lo = 0, hi = d->line_cnt;
     while (lo < hi) {
@@ -63,7 +102,6 @@ static void rt_pos_to_line_col(const RichTextData *d, size_t pos,
     }
 }
 
-/* 把行列换成字节下标 */
 static size_t rt_line_col_to_pos(const RichTextData *d, size_t line, size_t col)
 {
     if (line >= d->line_cnt) return d->len;
@@ -95,13 +133,8 @@ static void rt_ensure_text_capacity(RichTextData *d, size_t needed)
 * =========================================================*/
 static void rt_scroll_to_cursor(RichTextData *d, const TuiNode *rt)
 {
-    if (!rt || !d) return;
-
-    const int bw    = d->default_style.border ? 1 : 0;
-    const int scroll_w = d->show_scroll ? 2 : 0;
-    const int vis_w = rt->bounds.w - 2 * bw - scroll_w;
-    const int vis_h = rt->bounds.h - 2 * bw;
-    if (vis_w <= 0 || vis_h <= 0) return;
+    const rt_layout_t L = rt_calc_layout(d, rt);
+    if (L.vis_w <= 0 || L.vis_h <= 0) return;
 
     size_t cur_line, cur_col;
     rt_pos_to_line_col(d, d->cursor, &cur_line, &cur_col);
@@ -110,15 +143,15 @@ static void rt_scroll_to_cursor(RichTextData *d, const TuiNode *rt)
     d->scroll_y = CLAMP(d->scroll_y, 0, (int)d->line_cnt - 1);
     if ((int)cur_line < d->scroll_y)
         d->scroll_y = (int)cur_line;
-    else if ((int)cur_line >= d->scroll_y + vis_h)
-        d->scroll_y = (int)cur_line - vis_h + 1;
+    else if ((int)cur_line >= d->scroll_y + L.vis_h)
+        d->scroll_y = (int)cur_line - L.vis_h + 1;
 
     /* 横向 */
     d->scroll_x = CLAMP(d->scroll_x, 0, (int)cur_col);
     if ((int)cur_col < d->scroll_x)
         d->scroll_x = (int)cur_col;
-    else if ((int)cur_col >= d->scroll_x + vis_w)
-        d->scroll_x = (int)cur_col - vis_w + 1;
+    else if ((int)cur_col >= d->scroll_x + L.vis_w)
+        d->scroll_x = (int)cur_col - L.vis_w + 1;
 }
 
 /* =========================================================
@@ -151,20 +184,19 @@ static void rt_handle_key(RichTextData *d, const TuiNode *rt, const key_event_t 
                 size_t line, col;
                 rt_pos_to_line_col(d, d->cursor, &line, &col);
                 d->cursor = rt_line_col_to_pos(d, line,
-                                            (ch == K_HOME) ? 0 : d->lines[line].len);
+                                               (ch == K_HOME) ? 0 : d->lines[line].len);
                 break;
             }
             case K_PGUP:
             case K_PGDN: {
-                const int bw    = d->default_style.border ? 1 : 0;
-                const int vis_h = rt->bounds.h - 2 * bw;
+                const rt_layout_t L = rt_calc_layout(d, rt);
                 size_t line, col;
                 rt_pos_to_line_col(d, d->cursor, &line, &col);
                 if (ch == K_PGUP)
-                    line = (line > (size_t)vis_h) ? line - vis_h : 0;
+                    line = (line > (size_t)L.vis_h) ? line - L.vis_h : 0;
                 else {
                     size_t max_line = d->line_cnt ? d->line_cnt - 1 : 0;
-                    line = MIN(line + vis_h, max_line);
+                    line = MIN(line + L.vis_h, max_line);
                 }
                 d->cursor = rt_line_col_to_pos(d, line, col);
                 break;
@@ -214,16 +246,15 @@ static void rt_handle_key(RichTextData *d, const TuiNode *rt, const key_event_t 
 
 static void rt_handle_mouse(RichTextData *d, const TuiNode *rt, const mouse_event_t *m)
 {
-    const int bw       = d->default_style.border ? 1 : 0;
-    const int scroll_w = d->show_scroll ? 2 : 0;
-    const int click_x  = m->x - rt->abs_x - bw - 1;
-    const int click_y  = m->y - rt->abs_y - bw - 1;   
-    const int vis_w    = rt->bounds.w - 2 * bw - scroll_w;
-    const int vis_h    = rt->bounds.h - 2 * bw;
+    const rt_layout_t L = rt_calc_layout(d, rt);
+    if (L.vis_w <= 0 || L.vis_h <= 0) return;
+
+    const int click_x = m->x - L.inner_x;
+    const int click_y = m->y - L.inner_y;
 
     if (m->type == MOUSE_PRESS && m->button == MOUSE_LEFT) {
-        if (click_x >= 0 && click_x < vis_w &&
-            click_y >= 0 && click_y < vis_h) {
+        if (click_x >= 0 && click_x < L.vis_w &&
+            click_y >= 0 && click_y < L.vis_h) {
             size_t line = d->scroll_y + click_y;
             if (line < d->line_cnt) {
                 size_t col = click_x + d->scroll_x;
@@ -232,16 +263,17 @@ static void rt_handle_mouse(RichTextData *d, const TuiNode *rt, const mouse_even
         }
     }
 
-    if(m->type == MOUSE_WHEEL) {
+    if (m->type == MOUSE_WHEEL) {
         size_t line, col;
         rt_pos_to_line_col(d, d->cursor, &line, &col);
         line = (m->scroll > 0) ? (line ? line - 1 : 0)
-                            : MIN(line + 1, d->line_cnt ? d->line_cnt - 1 : 0);
+                               : MIN(line + 1, d->line_cnt ? d->line_cnt - 1 : 0);
         d->cursor = rt_line_col_to_pos(d, line, col);
     }
 }
+
 /* =========================================================
-* 主流程（保持不变，只调用上面的小函数）
+* 主流程
 * =========================================================*/
 static void richtext_draw(TuiNode *n, void *event);
 static void richtext_focus(RichTextData *d, TuiNode *rt, void *event);
@@ -253,7 +285,6 @@ TuiNode *richtext_new(TuiRect r, RichTextData *d)
     rt->draw           = richtext_draw;
     rt->data           = d;
 
-    /* 初始化文本缓冲区 */
     if (!d->cap) d->cap = 256;
     if (!d->text) {
         d->text = malloc(d->cap);
@@ -261,20 +292,16 @@ TuiNode *richtext_new(TuiRect r, RichTextData *d)
         d->len  = 0;
     }
 
-    /* 状态初始化 */
     d->state    = -1;
     d->cursor   = 0;
     d->scroll_x = d->scroll_y = 0;
-
-    /* 行表初始化 */
-    d->lines     = NULL;
-    d->line_cnt  = d->line_cap = 0;
+    d->lines    = NULL;
+    d->line_cnt = d->line_cap = 0;
     rt_build_lines(d);
-
     return rt;
 }
 
-/* ---------- draw & focus ---------- */
+/* ---------- draw ---------- */
 static void richtext_draw(TuiNode *n, void *event)
 {
     RichTextData *d = n->data;
@@ -283,29 +310,41 @@ static void richtext_draw(TuiNode *n, void *event)
 
     rt_scroll_to_cursor(d, n);
 
-    const int bw    = d->default_style.border ? 1 : 0;
-    const int scroll_w = d->show_scroll ? 2 : 0;
-    const int vis_w = n->bounds.w - 2 * bw - scroll_w;
-    const int vis_h = n->bounds.h - 2 * bw;
-    if (vis_w <= 0 || vis_h <= 0) return;
+    const rt_layout_t L = rt_calc_layout(d, n);
+    if (L.vis_w <= 0 || L.vis_h <= 0) return;
 
     /* 背景 & 边框 */
     canvas_draw((rect_t){ n->bounds.x, n->bounds.y, n->bounds.w, n->bounds.h },
                 "", d->default_style);
 
-    /* 绘制可见行 */
-    for (int row = 0; row < vis_h; ++row) {
+    /* 1) 行号栏背景 */
+    if (d->show_line_no) {
+        canvas_draw((rect_t){ n->abs_x + L.bw, L.inner_y - 1, L.gutter_w, L.vis_h },
+                    "", (style_t){ .bg = 7, .rect = 1 });
+    }
+
+    /* 2) 绘制可见行（文本 & 行号） */
+    for (int row = 0; row < L.vis_h; ++row) {
         size_t line_idx = d->scroll_y + row;
         if (line_idx >= d->line_cnt) break;
 
         RichLine *ln = &d->lines[line_idx];
 
+        /* 行号 */
+        if (d->show_line_no) {
+            char gutter[8];
+            snprintf(gutter, sizeof(gutter), "%4d", ln->lineno);
+            canvas_draw((rect_t){ n->abs_x + L.bw+1, L.inner_y + row-1, L.gutter_w - 1, 1 },
+                        gutter, (style_t){ .fg = 7, .bg = 7, .text = 1 });
+        }
+
+        /* 文本内容裁剪显示 */
         size_t byte_off = utf8_advance(d->text + ln->off, 0, d->scroll_x);
         if (byte_off >= ln->len) continue;
 
         int char_width   = utf8_swidth_len(d->text + ln->off + byte_off,
-                                        ln->len - byte_off);
-        int visible_w    = MIN(char_width, vis_w);
+                                           ln->len - byte_off);
+        int visible_w    = MIN(char_width, L.vis_w);
         size_t byte_take = utf8_trunc_width(d->text + ln->off + byte_off,
                                             visible_w);
 
@@ -313,36 +352,52 @@ static void richtext_draw(TuiNode *n, void *event)
         memcpy(tmp, d->text + ln->off + byte_off, byte_take);
         tmp[byte_take] = '\0';
 
-        canvas_draw((rect_t){ n->abs_x + bw, n->abs_y + bw + row, vis_w, 1 },
+        canvas_draw((rect_t){ L.inner_x-1, L.inner_y + row-1, L.vis_w, 1 },
                     tmp,
                     (style_t){ .fg = d->default_style.fg,
-                            .text = 1,
-                            .bg  = d->default_style.bg });
+                               .text = 1,
+                               .bg  = d->default_style.bg });
     }
 
+    /* 3) 滚动条 */
     if (d->show_scroll) {
-        const int sb_x = n->abs_x + n->bounds.w - bw - 1;               // 最右列
-        const int sb_h = vis_h;                                         // 指示器总高度
-        const int slot_h = MAX(1, sb_h * vis_h / (int)d->line_cnt);     // 滑块高
-        const int slot_y = sb_h * d->scroll_y / (int)d->line_cnt;       // 滑块偏移
+        const int sb_x = n->abs_x + n->bounds.w - L.bw - 1;
+        const int sb_h = L.vis_h;
+        const int slot_h = MAX(1, sb_h * L.vis_h / (int)d->line_cnt);
+        const int slot_y = sb_h * d->scroll_y / (int)d->line_cnt;
 
-        canvas_draw((rect_t){ sb_x, n->abs_y + bw, 1, sb_h }, "", (style_t){ .bg = 11, .rect = 1 });
-        canvas_draw((rect_t){ sb_x, n->abs_y + bw + slot_y, 1, 1 }, " ", (style_t){ .fg = 5, .text = 1 });
+        canvas_draw((rect_t){ sb_x, L.inner_y - 1, 1, sb_h }, "", (style_t){ .bg = 11, .rect = 1 });
+        canvas_draw((rect_t){ sb_x, L.inner_y - 1 + slot_y, 1, 1 }, " ", (style_t){ .fg = 7, .text = 1 });
     }
 
-    /* 光标 */
+    /* 4) 底部信息栏 */
+    char info[128];
+    size_t cur_line, cur_col;
+    rt_pos_to_line_col(d, d->cursor, &cur_line, &cur_col);
+    snprintf(info, sizeof(info), "Ln %zu, Col %zu  |  %zu lines  |  UTF-8",
+             cur_line + 1, cur_col + 1, d->line_cnt);
+    canvas_draw((rect_t){ n->abs_x + L.bw,
+                          n->abs_y + n->bounds.h - L.bw - 1,
+                          n->bounds.w - 2 * L.bw, 1 },"", (style_t){ .bg = 8, .rect = 1 });
+    canvas_draw((rect_t){ n->abs_x + L.bw,
+                          n->abs_y + n->bounds.h - L.bw - 1,
+                          n->bounds.w - 2 * L.bw, 1 },
+                info,
+                (style_t){ .fg = 0, .bg = 8, .text = 1, .align_horz = 2 });
+
+    /* 5) 光标 */
     if (n->bits.focus) {
-        size_t cur_line, cur_col;
-        rt_pos_to_line_col(d, d->cursor, &cur_line, &cur_col);
+        size_t cur_line2, cur_col2;
+        rt_pos_to_line_col(d, d->cursor, &cur_line2, &cur_col2);
 
-        int cur_row     = (int)cur_line - d->scroll_y;
-        int cur_col_vis = (int)cur_col  - d->scroll_x;
+        int cur_row_vis = (int)cur_line2 - d->scroll_y;
+        int cur_col_vis = (int)cur_col2  - d->scroll_x;
 
-        if (cur_row >= 0 && cur_row < vis_h &&
-            cur_col_vis >= 0 && cur_col_vis < vis_w) {
-            canvas_cursor_move(n->abs_x + bw + cur_col_vis + 1,
-                            n->abs_y + bw + cur_row + 1,
-                            1);
+        if (cur_row_vis >= 0 && cur_row_vis < L.vis_h &&
+            cur_col_vis >= 0 && cur_col_vis < L.vis_w) {
+            canvas_cursor_move(L.inner_x + cur_col_vis,
+                               L.inner_y + cur_row_vis,
+                               1);
         }
     }
 }
