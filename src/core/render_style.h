@@ -1,7 +1,9 @@
-#ifndef COLOR_PALETTE_H
-#define COLOR_PALETTE_H
+#ifndef RENDER_STYLE_H
+#define RENDER_STYLE_H
 
 #include <stdint.h>
+
+// 仅支持16色
 #define SEQ_LEN(s)  (sizeof(s) - 1)
 static const char * const RENDER_FG[16] = {
     "", "\e[34m", "\e[35m", "\e[32m", "\e[31m", "\e[90m", "\e[37m", "\e[97m",
@@ -59,5 +61,23 @@ static const uint8_t RENDER_BG_LEN[16] = {
 #define BC_BRIGHT_CYAN      14
 #define BC_BRIGHT_BLUE      15
 
+// 仅支持4种风格
+typedef enum {
+    BORDER_LIGHT=0, /* ─ │ ┌ ┐ └ ┘ */
+    BORDER_HEAVY,   /* ═ ║ ╔ ╗ ╚ ╝ */
+    BORDER_DASHED,  /* ┄ ┆ ┌ ┐ └ ┘ */
+    BORDER_ROUND,   /* ─ │ ╭ ╮ ╰ ╯ */
+} border_style_t;
 
-#endif /* COLOR_PALETTE_H */
+typedef struct {
+    uint32_t horz, vert, tl, tr, bl, br;
+} border_chars_t;
+
+static const border_chars_t BORDER_TBL[] = {
+    [BORDER_LIGHT]  = {0x2500, 0x2502, 0x250C, 0x2510, 0x2514, 0x2518},
+    [BORDER_HEAVY]  = {0x2550, 0x2551, 0x2554, 0x2557, 0x255A, 0x255D},
+    [BORDER_DASHED] = {0x2504, 0x2506, 0x250C, 0x2510, 0x2514, 0x2518},
+    [BORDER_ROUND]  = {0x2500, 0x2502, 0x256D, 0x256E, 0x2570, 0x256F},
+};
+
+#endif /* RENDER_STYLE_H */

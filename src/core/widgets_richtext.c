@@ -371,20 +371,22 @@ static void richtext_draw(TuiNode *n, void *event)
     }
 
     /* 4) 底部信息栏 */
-    char info[128];
-    size_t cur_line, cur_col;
-    rt_pos_to_line_col(d, d->cursor, &cur_line, &cur_col);
-    snprintf(info, sizeof(info), "Ln %zu, Col %zu  |  %zu lines  |  UTF-8",
-             cur_line + 1, cur_col + 1, d->line_cnt);
-    canvas_draw((rect_t){ n->abs_x + L.bw,
-                          n->abs_y + n->bounds.h - L.bw - 1,
-                          n->bounds.w - 2 * L.bw, 1 },"", (style_t){ .bg = 8, .rect = 1 });
-    canvas_draw((rect_t){ n->abs_x + L.bw,
-                          n->abs_y + n->bounds.h - L.bw - 1,
-                          n->bounds.w - 2 * L.bw, 1 },
-                info,
-                (style_t){ .fg = 0, .bg = 8, .text = 1, .align_horz = 2 });
-
+    if(d->show_info) {
+        char info[128];
+        size_t cur_line, cur_col;
+        rt_pos_to_line_col(d, d->cursor, &cur_line, &cur_col);
+        snprintf(info, sizeof(info), "Ln %zu, Col %zu  |  %zu lines  |  UTF-8",
+                cur_line + 1, cur_col + 1, d->line_cnt);
+        canvas_draw((rect_t){ n->abs_x + L.bw,
+                            n->abs_y + n->bounds.h - L.bw - 1,
+                            n->bounds.w - 2 * L.bw, 1 },"", (style_t){ .bg = 8, .rect = 1 });
+        canvas_draw((rect_t){ n->abs_x + L.bw,
+                            n->abs_y + n->bounds.h - L.bw - 1,
+                            n->bounds.w - 2 * L.bw, 1 },
+                    info,
+                    (style_t){ .fg = 0, .bg = 8, .text = 1, .align_horz = 2 });
+    }
+    
     /* 5) 光标 */
     if (n->bits.focus) {
         size_t cur_line2, cur_col2;

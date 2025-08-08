@@ -62,6 +62,7 @@ typedef struct {
         struct {
             uint8_t show_line_no : 1;
             uint8_t show_scroll  : 1;
+            uint8_t show_info    : 1;
         };
         uint8_t option;
     };

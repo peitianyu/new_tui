@@ -1,5 +1,5 @@
 #include "render.h"
-#include "color_palette.h"
+#include "render_style.h"
 
 /* ---------- 画布 API ---------- */
 static canvas_t g_canvas = {0};
@@ -47,25 +47,6 @@ static void draw_rect(rect_t r_clip, style_t st) {
     }
 }
 
-/* 2. 边框 ----------------------------------------------------------------- */
-typedef enum {
-    BORDER_LIGHT=0, /* ─ │ ┌ ┐ └ ┘ */
-    BORDER_HEAVY,   /* ═ ║ ╔ ╗ ╚ ╝ */
-    BORDER_DASHED,  /* ┄ ┆ ┌ ┐ └ ┘ */
-    BORDER_ROUND,   /* ─ │ ╭ ╮ ╰ ╯ */
-} border_style_t;
-
-typedef struct {
-    uint32_t horz, vert, tl, tr, bl, br;
-} border_chars_t;
-
-static const border_chars_t g_border_tbl[] = {
-    [BORDER_LIGHT]  = {0x2500, 0x2502, 0x250C, 0x2510, 0x2514, 0x2518},
-    [BORDER_HEAVY]  = {0x2550, 0x2551, 0x2554, 0x2557, 0x255A, 0x255D},
-    [BORDER_DASHED] = {0x2504, 0x2506, 0x250C, 0x2510, 0x2514, 0x2518},
-    [BORDER_ROUND]  = {0x2500, 0x2502, 0x256D, 0x256E, 0x2570, 0x256F},
-};
-
 static void draw_border(rect_t r, style_t st) {
     if (!st.border || r.w < 2 || r.h < 2) return;
 
@@ -78,8 +59,8 @@ static void draw_border(rect_t r, style_t st) {
     style_t  *restrict sty = g_canvas.sty;
 
     /* 取出当前样式字符 */
-    int bs = st.border_st % (sizeof(g_border_tbl)/sizeof(g_border_tbl[0]));
-    const border_chars_t b = g_border_tbl[bs];
+    int bs = st.border_st % (sizeof(BORDER_TBL)/sizeof(BORDER_TBL[0]));
+    const border_chars_t b = BORDER_TBL[bs];
 
     /* 四个角 */
     buf[y0 * stride + x0] = b.tl;
