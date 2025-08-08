@@ -98,7 +98,8 @@ static void rt_scroll_to_cursor(RichTextData *d, const TuiNode *rt)
     if (!rt || !d) return;
 
     const int bw    = d->default_style.border ? 1 : 0;
-    const int vis_w = rt->bounds.w - 2 * bw;
+    const int scroll_w = d->show_scroll ? 2 : 0;
+    const int vis_w = rt->bounds.w - 2 * bw - scroll_w;
     const int vis_h = rt->bounds.h - 2 * bw;
     if (vis_w <= 0 || vis_h <= 0) return;
 
@@ -214,9 +215,10 @@ static void rt_handle_key(RichTextData *d, const TuiNode *rt, const key_event_t 
 static void rt_handle_mouse(RichTextData *d, const TuiNode *rt, const mouse_event_t *m)
 {
     const int bw    = d->default_style.border ? 1 : 0;
+    const int scroll_w = d->show_scroll ? 2 : 0;
     const int click_x = m->x - rt->abs_x - bw;
     const int click_y = m->y - rt->abs_y - bw - 1;
-    const int vis_w   = rt->bounds.w - 2 * bw;
+    const int vis_w   = rt->bounds.w - 2 * bw - scroll_w;
     const int vis_h   = rt->bounds.h - 2 * bw;
 
     if (click_x >= 0 && click_x < vis_w &&
@@ -273,7 +275,8 @@ static void richtext_draw(TuiNode *n, void *event)
     rt_scroll_to_cursor(d, n);
 
     const int bw    = d->default_style.border ? 1 : 0;
-    const int vis_w = n->bounds.w - 2 * bw;
+    const int scroll_w = d->show_scroll ? 2 : 0;
+    const int vis_w = n->bounds.w - 2 * bw - scroll_w;
     const int vis_h = n->bounds.h - 2 * bw;
     if (vis_w <= 0 || vis_h <= 0) return;
 

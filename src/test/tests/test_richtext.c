@@ -47,4 +47,5 @@ TEST(richtext, test) {
     free(rt.text);     
     canvas_free();
     term_restore();
+    term_clear();
 }
