@@ -42,6 +42,7 @@ static void draw_rect(rect_t r_clip, style_t st) {
     for (int y = r_clip.y; y < r_clip.y + r_clip.h; ++y)
     for (int x = r_clip.x; x < r_clip.x + r_clip.w; ++x) {
         int i = y * g_canvas.w + x;
+        g_canvas.sty[i].rect = 1;
         g_canvas.sty[i].bg = st.bg;
         g_canvas.buf[i] = ' ';
     }
@@ -72,16 +73,16 @@ static void draw_border(rect_t r, style_t st) {
     for (int x = x0 + 1; x < x1; ++x) {
         const int top = y0 * stride + x;
         const int bot = y1 * stride + x;
-        buf[top] = b.horz; sty[top].fg = st.fg;
-        buf[bot] = b.horz; sty[bot].fg = st.fg;
+        buf[top] = b.horz; sty[top].fg = st.border_fg; sty[top].border = 1;
+        buf[bot] = b.horz; sty[bot].fg = st.border_fg; sty[bot].border = 1;
     }
 
     /* 左边和右边 */
     for (int y = y0 + 1; y < y1; ++y) {
         const int lef = y * stride + x0;
         const int rig = y * stride + x1;
-        buf[lef] = b.vert; sty[lef].fg = st.fg;
-        buf[rig] = b.vert; sty[rig].fg = st.fg;
+        buf[lef] = b.vert; sty[lef].fg = st.border_fg; sty[lef].border = 1;
+        buf[rig] = b.vert; sty[rig].fg = st.border_fg; sty[rig].border = 1;
     }
 }
 
@@ -160,6 +161,7 @@ static void draw_text(rect_t r_orig, const char *utf8, style_t st)
             if (x0 + w > ux + uw) break;
             int pos = (y0 + ln) * g_canvas.w + x0;
             g_canvas.buf[pos] = cp;
+            g_canvas.sty[pos].text = 1;
             g_canvas.sty[pos].fg = st.fg;
             if(st.bg) g_canvas.sty[pos].bg = st.bg;
             g_canvas.sty[pos].italic = st.italic;
@@ -168,6 +170,7 @@ static void draw_text(rect_t r_orig, const char *utf8, style_t st)
             g_canvas.sty[pos].strike = st.strike;
             if (w == 2 && x0 + 1 < ux + uw) {
                 g_canvas.buf[pos + 1] = 0;
+                g_canvas.sty[pos + 1].text = 1;
                 g_canvas.sty[pos + 1].fg = st.fg;
                 if(st.bg) g_canvas.sty[pos + 1].bg = st.bg;
                 g_canvas.sty[pos + 1].italic = st.italic;

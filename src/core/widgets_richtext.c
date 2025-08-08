@@ -301,6 +301,13 @@ TuiNode *richtext_new(TuiRect r, RichTextData *d)
     return rt;
 }
 
+void richtext_free(RichTextData *d)
+{
+    if (d->text)    free(d->text);
+    if (d->lines)   free(d->lines);
+    if (d->styles)  free(d->styles);
+}
+
 /* ---------- draw ---------- */
 static void richtext_draw(TuiNode *n, void *event)
 {

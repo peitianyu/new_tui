@@ -47,31 +47,30 @@ typedef struct {
     char   *text;
     size_t  len, cap;
 
+    size_t cursor;
+    int scroll_x, scroll_y;
+
     RichLine *lines;
     size_t    line_cnt, line_cap;
 
-    
     struct { size_t start, end; style_t style; } *styles;
     size_t style_cnt, style_cap;
 
-    size_t cursor;
-    int scroll_x, scroll_y;
-    int8_t state;
-    
-    union {
-        struct {
-            uint8_t show_line_no : 1;
-            uint8_t show_scroll  : 1;
-            uint8_t show_info    : 1;
-        };
-        uint8_t option;
+    struct {
+        uint8_t show_line_no : 1;
+        uint8_t show_scroll  : 1;
+        uint8_t show_info    : 1;
     };
+
     style_t default_style;
     style_t info_style;
     style_t line_no_style;
     style_t scroll_style;
+
+    int8_t state;
 } RichTextData;
 
 TuiNode *richtext_new(TuiRect r, RichTextData *data);
+void     richtext_free(RichTextData *d);
 
 #endif // __WIDGETS_H__

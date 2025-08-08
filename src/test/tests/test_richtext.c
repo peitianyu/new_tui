@@ -23,10 +23,10 @@ TEST(richtext, test) {
     TuiNode *root = create_root();
 
     RichTextData rt = {0};
-    rt.default_style = (style_t){ .fg = 7, .bg = 1, .text = 1, .rect = 1, .border = 0, .border_st = 3 };
-    rt.info_style    = (style_t){ .fg = 7, .bg = 2, .text = 1, .rect = 1 };
-    rt.scroll_style  = (style_t){ .fg = 7, .bg = 3, .text = 1, .rect = 1 };
-    rt.line_no_style = (style_t){ .fg = 7, .bg = 4, .text = 1, .rect = 1 };
+    rt.default_style = (style_t){ .fg = 1, .bg = 1, .text = 1, .rect = 1, .border = 1, .border_fg = 4, .border_st = 1 };
+    rt.info_style    = (style_t){ .fg = 2, .bg = 2, .text = 1, .rect = 1 };
+    rt.scroll_style  = (style_t){ .fg = 4, .bg = 3, .text = 1, .rect = 1 };
+    rt.line_no_style = (style_t){ .fg = 4, .bg = 4, .text = 1, .rect = 1 };
     rt.text = strdup("Hello 世界！\nThis is a RichText widget demo.\n支持中文、Emoji 😊 与样式。");
     rt.len = strlen(rt.text);
     rt.cap = rt.len + 1;
@@ -48,7 +48,7 @@ TEST(richtext, test) {
         update(root, &ev);
     }
 
-    free(rt.text);
+    richtext_free(&rt);
     canvas_free();
     term_restore();
     term_clear();
