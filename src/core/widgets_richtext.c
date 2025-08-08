@@ -367,7 +367,8 @@ static void richtext_draw(TuiNode *n, void *event)
         const int slot_y = sb_h * d->scroll_y / (int)d->line_cnt;
 
         canvas_draw((rect_t){ sb_x, L.inner_y - 1, 1, sb_h }, "", (style_t){ .bg = 11, .rect = 1 });
-        canvas_draw((rect_t){ sb_x, L.inner_y - 1 + slot_y, 1, 1 }, " ", (style_t){ .fg = 3, .bg = 11, .text = 1, .rect = 1 });
+
+        canvas_draw((rect_t){ sb_x, L.inner_y - 1 + slot_y, 1, 1 }, "█", (style_t){ .fg = 4, .text = 1});
     }
 
     /* 4) 底部信息栏 */

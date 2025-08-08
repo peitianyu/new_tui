@@ -42,7 +42,7 @@ static void draw_rect(rect_t r_clip, style_t st) {
     for (int y = r_clip.y; y < r_clip.y + r_clip.h; ++y)
     for (int x = r_clip.x; x < r_clip.x + r_clip.w; ++x) {
         int i = y * g_canvas.w + x;
-        g_canvas.sty[i] = st;
+        g_canvas.sty[i].bg = st.bg;
         g_canvas.buf[i] = ' ';
     }
 }
@@ -72,16 +72,16 @@ static void draw_border(rect_t r, style_t st) {
     for (int x = x0 + 1; x < x1; ++x) {
         const int top = y0 * stride + x;
         const int bot = y1 * stride + x;
-        buf[top] = b.horz; sty[top] = st;
-        buf[bot] = b.horz; sty[bot] = st;
+        buf[top] = b.horz; sty[top].fg = st.fg;
+        buf[bot] = b.horz; sty[bot].fg = st.fg;
     }
 
     /* 左边和右边 */
     for (int y = y0 + 1; y < y1; ++y) {
         const int lef = y * stride + x0;
         const int rig = y * stride + x1;
-        buf[lef] = b.vert; sty[lef] = st;
-        buf[rig] = b.vert; sty[rig] = st;
+        buf[lef] = b.vert; sty[lef].fg = st.fg;
+        buf[rig] = b.vert; sty[rig].fg = st.fg;
     }
 }
 
@@ -116,8 +116,6 @@ static void draw_text(rect_t r_orig, const char *utf8, style_t st)
     int i = 0;
     while (i < cnt && lc < 64) {
         int s = i, vis = 0, lastsp = -1;
-
-        /* 不换行模式：硬截断到可用宽度 */
         if (!st.wrap) {
             while (i < cnt && cps[i] != '\n' && vis + wds[i] <= uw) {
                 vis += wds[i];
@@ -127,8 +125,6 @@ static void draw_text(rect_t r_orig, const char *utf8, style_t st)
             if (i < cnt && cps[i] == '\n') ++i;   /* 吃掉显式换行 */
             continue;
         }
-
-        /* 自动换行模式：按单词边界软换行 */
         while (i < cnt) {
             if (cps[i] == '\n') { ++i; break; }
             if (cps[i] == ' ') lastsp = i;
@@ -164,10 +160,20 @@ static void draw_text(rect_t r_orig, const char *utf8, style_t st)
             if (x0 + w > ux + uw) break;
             int pos = (y0 + ln) * g_canvas.w + x0;
             g_canvas.buf[pos] = cp;
-            g_canvas.sty[pos] = st;
+            g_canvas.sty[pos].fg = st.fg;
+            g_canvas.sty[pos].bg = st.bg;
+            g_canvas.sty[pos].italic = st.italic;
+            g_canvas.sty[pos].underline = st.underline;
+            g_canvas.sty[pos].bold = st.bold;
+            g_canvas.sty[pos].strike = st.strike;
             if (w == 2 && x0 + 1 < ux + uw) {
                 g_canvas.buf[pos + 1] = 0;
-                g_canvas.sty[pos + 1] = st;
+                g_canvas.sty[pos + 1].fg = st.fg;
+                g_canvas.sty[pos + 1].bg = st.bg;
+                g_canvas.sty[pos + 1].italic = st.italic;
+                g_canvas.sty[pos + 1].underline = st.underline;
+                g_canvas.sty[pos + 1].bold = st.bold;
+                g_canvas.sty[pos + 1].strike = st.strike;
             }
             x0 += w;
         }
