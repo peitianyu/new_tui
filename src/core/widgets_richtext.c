@@ -214,23 +214,32 @@ static void rt_handle_key(RichTextData *d, const TuiNode *rt, const key_event_t 
 
 static void rt_handle_mouse(RichTextData *d, const TuiNode *rt, const mouse_event_t *m)
 {
-    const int bw    = d->default_style.border ? 1 : 0;
+    const int bw       = d->default_style.border ? 1 : 0;
     const int scroll_w = d->show_scroll ? 2 : 0;
-    const int click_x = m->x - rt->abs_x - bw;
-    const int click_y = m->y - rt->abs_y - bw - 1;
-    const int vis_w   = rt->bounds.w - 2 * bw - scroll_w;
-    const int vis_h   = rt->bounds.h - 2 * bw;
+    const int click_x  = m->x - rt->abs_x - bw - 1;
+    const int click_y  = m->y - rt->abs_y - bw - 1;   
+    const int vis_w    = rt->bounds.w - 2 * bw - scroll_w;
+    const int vis_h    = rt->bounds.h - 2 * bw;
 
-    if (click_x >= 0 && click_x < vis_w &&
-        click_y >= 0 && click_y < vis_h) {
-        size_t line = d->scroll_y + click_y;
-        if (line < d->line_cnt) {
-            size_t col = click_x + d->scroll_x;
-            d->cursor = rt_line_col_to_pos(d, line, col);
+    if (m->type == MOUSE_PRESS && m->button == MOUSE_LEFT) {
+        if (click_x >= 0 && click_x < vis_w &&
+            click_y >= 0 && click_y < vis_h) {
+            size_t line = d->scroll_y + click_y;
+            if (line < d->line_cnt) {
+                size_t col = click_x + d->scroll_x;
+                d->cursor = rt_line_col_to_pos(d, line, col);
+            }
         }
     }
-}
 
+    if(m->type == MOUSE_WHEEL) {
+        size_t line, col;
+        rt_pos_to_line_col(d, d->cursor, &line, &col);
+        line = (m->scroll > 0) ? (line ? line - 1 : 0)
+                            : MIN(line + 1, d->line_cnt ? d->line_cnt - 1 : 0);
+        d->cursor = rt_line_col_to_pos(d, line, col);
+    }
+}
 /* =========================================================
 * 主流程（保持不变，只调用上面的小函数）
 * =========================================================*/
@@ -345,6 +354,6 @@ static void richtext_focus(RichTextData *d, TuiNode *rt, void *event)
 
     if (ev->type == EVENT_KEY)
         rt_handle_key(d, rt, &ev->key);
-    else if (ev->type == EVENT_MOUSE && ev->mouse.type == MOUSE_PRESS)
+    else if (ev->type == EVENT_MOUSE)
         rt_handle_mouse(d, rt, &ev->mouse);
 }
