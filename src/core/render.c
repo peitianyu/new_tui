@@ -161,7 +161,7 @@ static void draw_text(rect_t r_orig, const char *utf8, style_t st)
             int pos = (y0 + ln) * g_canvas.w + x0;
             g_canvas.buf[pos] = cp;
             g_canvas.sty[pos].fg = st.fg;
-            g_canvas.sty[pos].bg = st.bg;
+            if(st.bg) g_canvas.sty[pos].bg = st.bg;
             g_canvas.sty[pos].italic = st.italic;
             g_canvas.sty[pos].underline = st.underline;
             g_canvas.sty[pos].bold = st.bold;
@@ -169,7 +169,7 @@ static void draw_text(rect_t r_orig, const char *utf8, style_t st)
             if (w == 2 && x0 + 1 < ux + uw) {
                 g_canvas.buf[pos + 1] = 0;
                 g_canvas.sty[pos + 1].fg = st.fg;
-                g_canvas.sty[pos + 1].bg = st.bg;
+                if(st.bg) g_canvas.sty[pos + 1].bg = st.bg;
                 g_canvas.sty[pos + 1].italic = st.italic;
                 g_canvas.sty[pos + 1].underline = st.underline;
                 g_canvas.sty[pos + 1].bold = st.bold;
