@@ -48,6 +48,8 @@ typedef struct {
     size_t  len, cap;
 
     size_t cursor;
+    size_t cursor_line;   
+    size_t cursor_col;    
     int scroll_x, scroll_y;
 
     RichLine *lines;
@@ -66,6 +68,8 @@ typedef struct {
     style_t info_style;
     style_t line_no_style;
     style_t scroll_style;
+
+    uint8_t dirty_flags;
 
     int8_t state;
 
