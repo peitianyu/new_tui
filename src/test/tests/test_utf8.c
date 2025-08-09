@@ -100,6 +100,7 @@ static void test_len(void)
 static void test_swidth(void)
 {
     ASSERT_EQ(utf8_swidth("abc"), 3);
+    ASSERT_EQ(utf8_swidth("This"), 4);
     ASSERT_EQ(utf8_swidth("中文"), 4);
     ASSERT_EQ(utf8_swidth("ひら"), 4);
     ASSERT_EQ(utf8_swidth("👨‍💻"), 2);   /* 虽然底层有多个码点，但首码点宽 2 */
