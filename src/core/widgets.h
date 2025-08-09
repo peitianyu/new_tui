@@ -68,6 +68,17 @@ typedef struct {
     style_t scroll_style;
 
     int8_t state;
+
+    // 选中文本相关
+    size_t select_start;   // 选中起始位置（字节偏移）
+    size_t select_end;     // 选中结束位置（字节偏移）
+    int8_t is_selecting;   // 是否正在选中状态
+    style_t select_style;  // 选中文本的样式
+    
+    // 剪贴板相关
+    char *clipboard;       // 内部剪贴板缓冲区
+    size_t clipboard_len;  // 剪贴板内容长度
+    size_t clipboard_cap;  // 剪贴板容量
 } RichTextData;
 
 TuiNode *richtext_new(TuiRect r, RichTextData *data);

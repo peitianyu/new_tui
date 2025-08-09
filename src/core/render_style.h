@@ -80,4 +80,6 @@ static const border_chars_t BORDER_TBL[] = {
     [BORDER_ROUND]  = {0x2500, 0x2502, 0x256D, 0x256E, 0x2570, 0x256F},
 };
 
+#define MAX_CELL_SIZE (64) // 根据自己需要设置
+
 #endif /* RENDER_STYLE_H */

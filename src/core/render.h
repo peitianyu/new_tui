@@ -9,7 +9,6 @@
 #include "utf8.h"
 
 typedef struct { int x, y, w, h; } rect_t;
-
 typedef union {
     struct {
         uint32_t fg        : 4;

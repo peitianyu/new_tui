@@ -105,7 +105,6 @@ int utf8_swidth_len(const char *s, size_t byte_len) {
     int w = 0;
     const char *end = s + byte_len;
     while (s < end) {
-        const char *old = s;
         uint32_t cp = utf8_decode(&s);
         w += utf8_width(cp);
     }

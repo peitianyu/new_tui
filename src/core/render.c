@@ -223,7 +223,6 @@ static inline void render_cell_fast(int idx, char **p, int with_pos) {
 }
 
 /* ---------- 增量刷新 ---------- */
-#define MAX_CELL_SIZE (64) // !注意: 渲染应该不超过这个数值
 void canvas_flush(void) {
     const int N = g_canvas.w * g_canvas.h;
     
