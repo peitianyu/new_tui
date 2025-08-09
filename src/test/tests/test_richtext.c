@@ -2,9 +2,7 @@
 #include "core/c_test.h"
 #include "core/log.h"
 
-static inline TuiNode *create_root(void) {
-    int w, h;
-    term_size(&w, &h);
+static inline TuiNode *create_root(int w, int h) {
     term_init();
     term_clear();
     canvas_init(w, h);
@@ -20,7 +18,9 @@ static void update(TuiNode *r, void *ev) {
 
 TEST(richtext, test) {
     setlocale(LC_ALL, "");
-    TuiNode *root = create_root();
+    int w, h;
+    term_size(&w, &h);
+    TuiNode *root = create_root(w, h);
 
     RichTextData rt = {0};
     rt.default_style = (style_t){ .fg = 0, .bg = 1, .text = 1, .rect = 1, .border = 0, .border_fg = 4, .border_st = 1 };
@@ -33,7 +33,7 @@ TEST(richtext, test) {
     rt.show_line_no = 1;
     rt.show_scroll  = 1;
     rt.show_info    = 1;
-    TuiNode *richtext = richtext_new((TuiRect){5, 5, 50, 10}, &rt);
+    TuiNode *richtext = richtext_new((TuiRect){1, 1, 50, 10}, &rt);
     tui_node_add(root, richtext);
 
     update(root, NULL);

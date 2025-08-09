@@ -200,9 +200,21 @@ static char *rt_get_selected_text(RichTextData *d) {
 /* =========================================================
 * 剪贴板操作
 * =========================================================*/
+#include <sys/wait.h>
+static bool write_to_clipboard_x11(const char *text) {
+    FILE *pipe = popen("xclip -selection clipboard -i 2>/dev/null", "w");
+    if (!pipe) return false;
+
+    size_t len = strlen(text);
+    size_t written = fwrite(text, 1, len, pipe);
+        if (written != len || pclose(pipe) != 0) {
+        return false;
+    }
+    return true;
+}
 static void rt_copy_to_clipboard(RichTextData *d, const char *text) {
     if (!text) return;
-    
+    write_to_clipboard_x11(text);
     size_t len = strlen(text);
     if (len + 1 > d->clipboard_cap) {
         d->clipboard_cap = len + 64;
@@ -264,7 +276,7 @@ static void rt_handle_key(RichTextData *d, const TuiNode *rt, const key_event_t 
             case CTRL_KEY('x'):  // Ctrl+X 剪切
                 rt_cut_selection(d);
                 return;
-            case CTRL_KEY('p'):  // Ctrl+P 粘贴
+            case ALT_KEY('v'):  // Ctrl+P 粘贴
                 rt_paste_from_clipboard(d);
                 return;
             case CTRL_KEY('a'):  // Ctrl+A 全选
