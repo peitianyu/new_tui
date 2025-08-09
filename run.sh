@@ -3,7 +3,7 @@ if [ ! -d "build" ]; then
     mkdir build
 fi
 
-cd build && cmake .. && make -j6 && rm log.txt
+cd build && cmake .. && make -j6 && cat /dev/null > log.txt
 
 ./all_tests 
 

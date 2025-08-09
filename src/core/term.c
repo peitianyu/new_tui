@@ -23,13 +23,13 @@ void term_init(void) {
     raw.c_lflag &= ~(ECHO | ICANON);
     raw.c_iflag &= ~(IXON | IXOFF | IXANY);
 
-    raw.c_cc[VINTR] = _POSIX_VDISABLE;  
-    raw.c_cc[VSUSP] = _POSIX_VDISABLE;  
+    raw.c_cc[VINTR] = _POSIX_VDISABLE;
+    raw.c_cc[VSUSP] = _POSIX_VDISABLE;
+    raw.c_cc[VLNEXT] = _POSIX_VDISABLE;  
 
     raw.c_cc[VMIN] = 1;
     raw.c_cc[VTIME] = 0;
 
-    tcsetattr(STDIN_FILENO, TCSANOW, &raw);
     tcsetattr(STDIN_FILENO, TCSANOW, &raw);
 
     printf("\e[?1000h\e[?1002h\e[?1003h\e[?1015h\e[?1006h\e[?25l");

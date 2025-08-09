@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <spawn.h>
+#include <sys/wait.h>
 
 // 脏标记定义
 #define DIRTY_NONE    0x00
@@ -154,6 +157,99 @@ static void rt_scroll_to_cursor(RichTextData *d, const TuiNode *rt) {
         d->scroll_x = (int)cur_col - L.vis_w + 1;
 }
 
+static void rt_update_selection(RichTextData *d, size_t pos) {
+    if (d->is_selecting) {
+        d->select_end = pos;
+    }else{
+        d->select_start = pos;
+        d->select_end = pos;
+        d->is_selecting = 1;
+    }
+}
+
+static void rt_end_selection(RichTextData *d) {
+    d->is_selecting = 0;
+    if (d->select_start > d->select_end) {
+        size_t tmp = d->select_start;
+        d->select_start = d->select_end;
+        d->select_end = tmp;
+    }
+}
+
+static int rt_has_selection(const RichTextData *d) {
+    return d->select_start < d->select_end;
+}
+
+static void rt_clear_selection(RichTextData *d) {
+    d->select_start = 0;
+    d->select_end = 0;
+    d->is_selecting = 0;
+}
+
+/* 获取选中的文本 */
+static char *rt_get_selected_text(RichTextData *d) {
+    if (!rt_has_selection(d)) return NULL;
+    
+    size_t len = d->select_end - d->select_start;
+    char *text = malloc(len + 1);
+    memcpy(text, d->text + d->select_start, len);
+    text[len] = '\0';
+    return text;
+}
+
+/* =========================================================
+* 剪贴板操作
+* =========================================================*/
+static void rt_copy_to_clipboard(RichTextData *d, const char *text) {
+    if (!text) return;
+    
+    size_t len = strlen(text);
+    if (len + 1 > d->clipboard_cap) {
+        d->clipboard_cap = len + 64;
+        d->clipboard = realloc(d->clipboard, d->clipboard_cap);
+    }
+    strcpy(d->clipboard, text);
+    d->clipboard_len = len;
+}
+
+static void rt_copy_selection(RichTextData *d) {
+    char *selected = rt_get_selected_text(d);
+    
+    if (selected) {
+        rt_copy_to_clipboard(d, selected);
+        free(selected);
+    }
+}
+
+static void rt_cut_selection(RichTextData *d) {
+    if (!rt_has_selection(d)) return;
+    
+    rt_copy_selection(d);
+    
+    // 删除选中的文本
+    memmove(d->text + d->select_start, d->text + d->select_end, 
+            d->len - d->select_end + 1);
+    d->len -= d->select_end - d->select_start;
+    d->cursor = d->select_start;
+    d->dirty_flags |= DIRTY_LINES | DIRTY_CURSOR;
+    rt_clear_selection(d);
+}
+
+static void rt_paste_from_clipboard(RichTextData *d) {
+    if (!d->clipboard || d->clipboard_len == 0) return;
+    
+    if (rt_has_selection(d)) rt_cut_selection(d);
+    
+    rt_ensure_text_capacity(d, d->len + d->clipboard_len);
+    
+    memmove(d->text + d->cursor + d->clipboard_len, d->text + d->cursor, d->len - d->cursor + 1);
+    memcpy(d->text + d->cursor, d->clipboard, d->clipboard_len);
+    
+    d->cursor += d->clipboard_len;
+    d->len += d->clipboard_len;
+    d->dirty_flags |= DIRTY_LINES | DIRTY_CURSOR;
+}
+
 /* =========================================================
 * 事件处理
 * =========================================================*/
@@ -162,6 +258,21 @@ static void rt_handle_key(RichTextData *d, const TuiNode *rt, const key_event_t 
         int ch = k->key[i];
         if (k->type[i] == KEY_SPECIAL) {
             switch (ch) {
+            case CTRL_KEY('c'):  // Ctrl+C 复制
+                rt_copy_selection(d);
+                return;
+            case CTRL_KEY('x'):  // Ctrl+X 剪切
+                rt_cut_selection(d);
+                return;
+            case CTRL_KEY('p'):  // Ctrl+P 粘贴
+                rt_paste_from_clipboard(d);
+                return;
+            case CTRL_KEY('a'):  // Ctrl+A 全选
+                d->select_start = 0;
+                d->select_end = d->len;
+                d->cursor = d->len;
+                d->dirty_flags |= DIRTY_CURSOR;
+                return;
             case K_LEFT:
                 if (d->cursor) d->cursor = utf8_prev(d->text, d->cursor);
                 break;
@@ -229,7 +340,9 @@ static void rt_handle_key(RichTextData *d, const TuiNode *rt, const key_event_t 
                 break;
             }
         } else {
-            /* 普通字符 */
+            if (rt_has_selection(d)) {
+                rt_cut_selection(d);
+            }
             rt_ensure_text_capacity(d, d->len + 4);
             char tmp[4];
             int bytes = utf8_encode(ch, tmp);
@@ -263,6 +376,25 @@ static void rt_handle_mouse(RichTextData *d, const TuiNode *rt, const mouse_even
                 d->dirty_flags |= DIRTY_CURSOR;
             }
         }
+        rt_clear_selection(d);
+    }
+
+    if (m->type == MOUSE_DRAG && m->button == MOUSE_LEFT) {
+        if (click_x >= 0 && click_x < L.vis_w &&
+            click_y >= 0 && click_y < L.vis_h) {
+            size_t line = d->scroll_y + click_y;
+            if (line < d->line_cnt) {
+                size_t col = click_x + d->scroll_x;
+                size_t pos = rt_line_col_to_pos(d, line, col);
+                rt_update_selection(d, pos);
+                d->cursor = pos;
+                d->dirty_flags |= DIRTY_CURSOR;
+            }
+        }
+    }
+
+    if (m->type == MOUSE_RELEASE && m->button == MOUSE_LEFT) {
+        rt_end_selection(d);
     }
 
     if (m->type == MOUSE_WHEEL) {
@@ -301,17 +433,84 @@ static void draw_text_lines(TuiNode *n, RichTextData *d, const rt_layout_t *L) {
         if (line_idx >= d->line_cnt) break;
 
         RichLine *ln = &d->lines[line_idx];
+        
+        // 跳过水平滚动部分
         size_t byte_off = utf8_advance(d->text + ln->off, 0, d->scroll_x);
         if (byte_off >= ln->len) continue;
 
+        // 计算可见文本
         int char_width = utf8_swidth_len(d->text + ln->off + byte_off, ln->len - byte_off);
         int visible_w = MIN(char_width, L->vis_w);
         size_t byte_take = utf8_trunc_width(d->text + ln->off + byte_off, visible_w);
 
+        // 确定当前行是否有选中的文本
+        size_t line_start = ln->off;
+        size_t line_end = ln->off + ln->len;
+        
+        // 计算选中的部分
+        if (rt_has_selection(d) &&
+            !(d->select_end <= line_start || d->select_start >= line_end)) {
+
+            size_t sel_start = MAX(d->select_start, line_start);
+            size_t sel_end = MIN(d->select_end, line_end);
+
+            const char *line_text = d->text + ln->off;
+            size_t line_len = ln->len;
+
+            // 将 scroll_x 从字符宽度转换为字节偏移
+            const char *p = line_text;
+            size_t visual_col = 0;
+            size_t byte_off = 0;
+            while (byte_off < line_len && visual_col < (size_t)d->scroll_x) {
+                unsigned cp = utf8_decode(&p);
+                visual_col += utf8_width(cp);
+                byte_off = p - line_text;
+            }
+
+            // 计算选中区域在可见范围内的起始和结束字节偏移
+            size_t vis_start = MAX(sel_start, ln->off + byte_off) - (ln->off + byte_off);
+            size_t vis_end = MIN(sel_end, ln->off + line_len) - (ln->off + byte_off);
+
+            if (vis_start < vis_end) {
+                // 计算选中区域的显示宽度和起始列
+                int sel_col_start = 0;
+                int sel_width = 0;
+
+                const char *start_ptr = line_text + byte_off + vis_start;
+                const char *end_ptr = line_text + byte_off + vis_end;
+
+                // 计算起始列（相对于可见区域）
+                const char *tmp = line_text + byte_off;
+                while (tmp < start_ptr) {
+                    unsigned cp = utf8_decode(&tmp);
+                    sel_col_start += utf8_width(cp);
+                }
+
+                // 计算选中宽度
+                tmp = start_ptr;
+                while (tmp < end_ptr) {
+                    unsigned cp = utf8_decode(&tmp);
+                    sel_width += utf8_width(cp);
+                }
+
+                if (sel_width > 0) {
+                    canvas_draw((rect_t){
+                        L->inner_x + sel_col_start - 1,
+                        L->inner_y + row - 1,
+                        sel_width,
+                        1
+                    }, "", (style_t){ .bg = 14, .rect = 1 });
+                }
+            }
+        }
+
+        // 绘制文本
         char tmp[byte_take + 1];
         memcpy(tmp, d->text + ln->off + byte_off, byte_take);
         tmp[byte_take] = '\0';
-
+        
+        style_t text_style = d->default_style;
+        text_style.text = 1;
         canvas_draw((rect_t){ L->inner_x - 1, L->inner_y + row - 1, L->vis_w, 1 }, tmp, (style_t){.text = 1});
     }
 }
@@ -376,6 +575,17 @@ TuiNode *richtext_new(TuiRect r, RichTextData *d) {
     d->scroll_x = d->scroll_y = 0;
     d->lines = NULL;
     d->line_cnt = d->line_cap = 0;
+
+    // 初始化选择相关字段
+    d->select_start = 0;
+    d->select_end = 0;
+    d->is_selecting = 0;
+
+    // 初始化剪贴板
+    d->clipboard = NULL;
+    d->clipboard_len = 0;
+    d->clipboard_cap = 0;
+    
     d->dirty_flags = DIRTY_ALL;
     rt_build_lines(d);
     return rt;
@@ -401,8 +611,7 @@ static void richtext_draw(TuiNode *n, void *event) {
     if (L.vis_w <= 0 || L.vis_h <= 0) return;
 
     // 背景和边框
-    canvas_draw((rect_t){n->bounds.x, n->bounds.y, n->bounds.w, n->bounds.h},
-                "", d->default_style);
+    canvas_draw((rect_t){n->bounds.x, n->bounds.y, n->bounds.w, n->bounds.h}, "", d->default_style);
 
     // 模块化绘制
     if (d->show_line_no) draw_gutter(n, d, &L);
