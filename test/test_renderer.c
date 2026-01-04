@@ -6,16 +6,14 @@
 TEST(test, renderer) {
     SetConsoleOutputCP(65001);
 
-    renderer_t *r = renderer_new(10, 5, (style_t){.fg=-1, .bg=0x1, .raw=0});
+    renderer_t *r = renderer_new(19, 9, (style_t){.fg=-1, .bg=0xFF00FF, .raw=0});
 
-    const char *s   = "ｘ中文";
-    style_t style = {.fg=0x2, .bg=-1, .strike=1};
-    renderer_set_str(r, 1, 1, s, &style);
+    const char *s   = "Hello 世界 🌍 🚀 ";
+    style_t style = {.fg=0xFF00FF, .bg=0x00FF00, .italic=1, .bold=1};
+    renderer_set_str(r, 3, 1, s, &style);
 
-    renderer_print(r);
-
-    // style.strike = 1;
-    // renderer_set_str(r, 1, 3, s, &style);
+    style.strike = 1;
+    renderer_set_str(r, 1, 3, s, &style);
 
     char *s2 = renderer_to_string(r);
     printf("%s", s2);

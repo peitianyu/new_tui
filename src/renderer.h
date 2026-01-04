@@ -48,13 +48,11 @@ static inline void renderer_set(renderer_t *r, int x, int y, const utf8_t *u, co
 
     int idx = y * r->w + x;
     r->cells[idx]  = *u;
-    r->styles[idx] = s ? *s : (style_t){.fg=-1, .bg=-1, .raw=0};
-
-    printf("len: %d, width: %d\n", u->len, u->width);
+    r->styles[idx] = *s;
     
     if (u->width == 1) return;
     for (int i = 1; i < u->width; i++) 
-        renderer_set(r, x + i, y, &utf8_empty, NULL);
+        renderer_set(r, x + i, y, &utf8_empty, s);
 }
 
 static inline void renderer_set_str(renderer_t *r, int x, int y, const char *str, const style_t *s) {
@@ -75,18 +73,17 @@ static inline char* renderer_to_string(renderer_t *r) {
     for (int y = 0; y < r->h; y++) {
         style_t s = {.fg=-1, .bg=-1, .raw=0};
         for (int x = 0; x < r->w; x++) {
-            
+            utf8_t *u = &r->cells[y * r->w + x];
+            if (u->len == 0) { continue;}
             char* style_str = style_to_string(r->styles[y * r->w + x]);
             if(style_cmp(s, r->styles[y * r->w + x])) {
+                memcpy(p, "\x1b[0m", 4);
+                p += 4;
                 int style_str_len = strlen(style_str);
                 memcpy(p, style_str, style_str_len);
                 p += style_str_len;
                 s = r->styles[y * r->w + x];
             }
-
-            utf8_t *u = &r->cells[y * r->w + x];
-            if (u->len == 0) { continue;}
-
             memcpy(p, u->bytes, u->len);
             p += u->len;
         }

@@ -24,6 +24,10 @@ static inline int style_color(char *dst, int code, int is_bg) {
                             (code>>16)&0xFF, (code>>8)&0xFF, code&0xFF);
 }
 
+static inline style_t style_new(int fg, int bg, int attr) { 
+    return (style_t){fg, bg, attr};
+}
+
 static inline int style_cmp(style_t a, style_t b) {
     return (a.fg != b.fg) || (a.bg != b.bg) || (a.raw != b.raw); 
 }
