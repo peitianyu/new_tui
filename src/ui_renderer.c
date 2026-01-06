@@ -1,5 +1,7 @@
 #include "ui_renderer.h"
 
+static int g_first;
+static renderer_t *g_last_renderer; 
 static renderer_t *g_renderer; 
 static mu_Rect g_clip_rect = {0};
 static int g_is_clipping = 0;
@@ -23,6 +25,8 @@ void r_init(void) {
     int width = 0, height = 0;
     term_get_size(&width, &height);
     g_renderer = renderer_new(width, height, (style_t){.fg=-1, .bg=-1, .raw=0});
+    g_last_renderer = renderer_new(width, height, (style_t){.fg=-1, .bg=-1, .raw=0}); 
+    g_first = 1;
 }
 
 
@@ -85,7 +89,25 @@ void r_set_clip_rect(mu_Rect rect) {
 }
 
 void r_present(void) {
-    term_clear_screen();
-    printf("%s", renderer_to_string(g_renderer));
-    // free(s);
+    if (g_first) {
+        term_clear_screen();
+        printf("%s", renderer_to_string(g_renderer));
+        g_first = 0;
+    } else {
+        for (int i = 0; i < g_renderer->w * g_renderer->h; i++) {
+            int x = i % g_renderer->w;
+            int y = i / g_renderer->w;
+            if (!utf8_cmp(g_renderer->cells[i], g_last_renderer->cells[i]) && 
+                !style_cmp(g_renderer->styles[i], g_last_renderer->styles[i])) {
+                continue;
+            }
+            term_move_cursor(x, y);
+            printf("%s\x1b[0m", renderer_xy_to_string(g_renderer, x, y));
+        }
+    }
+
+    for(int i = 0; i < g_renderer->w * g_renderer->h; i++) {
+        g_last_renderer->cells[i] = g_renderer->cells[i];
+        g_last_renderer->styles[i] = g_renderer->styles[i];
+    }
 }

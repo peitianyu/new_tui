@@ -97,6 +97,19 @@ static inline char* renderer_to_string(renderer_t *r) {
     return buf;
 }
 
+static inline char* renderer_xy_to_string(renderer_t *r, int x, int y) {
+    char buf[1024];
+    char *p = buf;
+    char* style_str = style_to_string(r->styles[y * r->w + x]);
+    memcpy(p, style_str, strlen(style_str));
+    p += strlen(style_str);
+
+    memcpy(p, r->cells[y * r->w + x].bytes, r->cells[y * r->w + x].len);
+    p += r->cells[y * r->w + x].len;
+    *p = '\0';
+    return strdup(buf);
+}
+
 static inline void renderer_print(renderer_t *r) {
     for(int y = 0; y < r->h; y++) {
         for(int x = 0; x < r->w; x++) {

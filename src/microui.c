@@ -51,7 +51,7 @@ static mu_Rect unclipped_rect = { 0, 0, 0x1000000, 0x1000000 };
 
 static mu_Style default_style = {
   /* font | size | padding | spacing | indent */
-  NULL, { 68, 10 }, 1, 1, 1,
+  NULL, { 68, 1 }, 0, 0, 1,
   /* title_height | scrollbar_size | thumb_size */
   1, 1, 1,
   {

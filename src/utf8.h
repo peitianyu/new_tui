@@ -21,6 +21,14 @@ static const range3_t wide_tbl[] = {
 };
 #define WIDE_N  (sizeof(wide_tbl)/sizeof(wide_tbl[0]))
 
+static inline int utf8_cmp(const utf8_t a, const utf8_t b) {
+    if(a.len != b.len) return 1;
+    for (uint8_t i = 0; i < a.len; ++i) {
+        if (a.bytes[i] != b.bytes[i]) return 1;
+    }
+    return 0;
+}
+
 static inline uint8_t utf8_width(const uint8_t *s, uint8_t len) {
     if (len == 1) {
         uint8_t c = s[0];
