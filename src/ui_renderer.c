@@ -61,10 +61,10 @@ void r_draw_text(const char *text, mu_Vec2 pos, mu_Color color) {
 void r_draw_icon(int id, mu_Rect rect, mu_Color color) {
     const char* icon;
     switch (id) {
-        case MU_ICON_CLOSE:     icon = "✕";   break; 
-        case MU_ICON_CHECK:     icon = "●";   break;
-        case MU_ICON_COLLAPSED: icon = "▶";  break;
-        case MU_ICON_EXPANDED:  icon = "▼";   break;
+        case MU_ICON_CLOSE:     icon = "x";   break; 
+        case MU_ICON_CHECK:     icon = "*";   break;
+        case MU_ICON_COLLAPSED: icon = "+";  break;
+        case MU_ICON_EXPANDED:  icon = "-";   break;
         default:                              break;
     }
     
@@ -90,18 +90,20 @@ void r_set_clip_rect(mu_Rect rect) {
 
 void r_present(void) {
     if (g_first) {
+        g_first = 0;
+
         term_clear_screen();
         printf("%s", renderer_to_string(g_renderer));
-        g_first = 0;
     } else {
         for (int i = 0; i < g_renderer->w * g_renderer->h; i++) {
-            int x = i % g_renderer->w;
-            int y = i / g_renderer->w;
             if (!utf8_cmp(g_renderer->cells[i], g_last_renderer->cells[i]) && 
                 !style_cmp(g_renderer->styles[i], g_last_renderer->styles[i])) {
                 continue;
             }
-            term_move_cursor(x, y);
+
+            int x = i % g_renderer->w;
+            int y = i / g_renderer->w;
+            term_move_cursor(x+1, y);
             printf("%s\x1b[0m", renderer_xy_to_string(g_renderer, x, y));
         }
     }

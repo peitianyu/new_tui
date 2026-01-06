@@ -51,7 +51,7 @@ static mu_Rect unclipped_rect = { 0, 0, 0x1000000, 0x1000000 };
 
 static mu_Style default_style = {
   /* font | size | padding | spacing | indent */
-  NULL, { 68, 1 }, 0, 0, 1,
+  NULL, { 20, 1 }, 0, 0, 0,
   /* title_height | scrollbar_size | thumb_size */
   1, 1, 1,
   {
@@ -711,7 +711,7 @@ void mu_text(mu_Context *ctx, const char *text) {
     start = end = p;
     do {
       const char* word = p;
-      while (*p && *p != ' ' && *p != '\n') { p++; }
+      while (*p && *p != '\n') { p++; }
       w += ctx->text_width(font, word, p - word);
       if (w > r.w && end != start) { break; }
       w += ctx->text_width(font, p, 1);
@@ -751,7 +751,7 @@ int mu_checkbox(mu_Context *ctx, const char *label, int *state) {
   int res = 0;
   mu_Id id = mu_get_id(ctx, &state, sizeof(state));
   mu_Rect r = mu_layout_next(ctx);
-  mu_Rect box = mu_rect(r.x, r.y, r.h*2, r.h);
+  mu_Rect box = mu_rect(r.x, r.y, r.h, r.h);
   mu_update_control(ctx, id, r, 0);
   /* handle click */
   if (ctx->mouse_pressed == MU_MOUSE_LEFT && ctx->focus == id) {
@@ -955,7 +955,7 @@ static int header(mu_Context *ctx, const char *label, int istreenode, int opt) {
   }
   mu_draw_icon(
     ctx, expanded ? MU_ICON_EXPANDED : MU_ICON_COLLAPSED,
-    mu_rect(r.x, r.y, r.h*2, r.h), ctx->style->colors[MU_COLOR_TEXT]);
+    mu_rect(r.x, r.y, r.h, r.h), ctx->style->colors[MU_COLOR_TEXT]);
   r.x += r.h - ctx->style->padding;
   r.w -= r.h - ctx->style->padding;
   mu_draw_control_text(ctx, label, r, MU_COLOR_TEXT, 0);
@@ -1118,7 +1118,7 @@ int mu_begin_window_ex(mu_Context *ctx, const char *title, mu_Rect rect, int opt
     /* do `close` button */
     if (~opt & MU_OPT_NOCLOSE) {
       mu_Id id = mu_get_id(ctx, "!close", 6);
-      mu_Rect r = mu_rect(tr.x + tr.w - tr.h*2, tr.y, tr.h*2, tr.h);
+      mu_Rect r = mu_rect(tr.x + tr.w - tr.h, tr.y, tr.h, tr.h);
       tr.w -= r.w;
       mu_draw_icon(ctx, MU_ICON_CLOSE, r, ctx->style->colors[MU_COLOR_TITLETEXT]);
       mu_update_control(ctx, id, r, opt);
