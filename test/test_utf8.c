@@ -6,7 +6,7 @@
 TEST(test, utf8) {
     SetConsoleOutputCP(65001);
 
-    const char *s   = "Hello 世界 🌍▲▼█🚀◼↩↵→☑☐⯆⯈";
+    const char *s   = "Hello 世界 🌍▲▼█🚀◼↩↵→☑☐⯆⯈ｘ";
     utf8_t          buf[256];
     int n = str_to_utf8(s, buf, 256);
     if (n < 0) {
@@ -23,4 +23,5 @@ TEST(test, utf8) {
             printf("%02x ", (unsigned char)buf[i].bytes[j]);
         printf(" %s\n", tmp);      
     }
+    printf("%s\n", s);
 }

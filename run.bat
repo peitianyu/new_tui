@@ -1,0 +1,1 @@
+tcc test_main.c src/*.c test/*.c lib/user32.def -run

@@ -42,11 +42,11 @@ static void bt_print_simple(int sig) {
             case SIGILL:  sig_name = "Illegal Instruction"; break;
             case SIGABRT: sig_name = "Abort"; break;
         }
-        printf("║ Signal: %-26s ║\n", sig_name);
+        printf("║ Signal: %-24s ║\n", sig_name);
         printf("╠══════════════════════════════════╣\n");
     }
     
-    printf("║         Stack Trace              ║\n");
+        printf("║         Stack Trace              ║\n");
     printf("╠══════════════════════════════════╣\n");
     
     /* 遍历栈帧 */
@@ -58,7 +58,7 @@ static void bt_print_simple(int sig) {
         if(!ret_addr) break;
         
         frames[count++] = ret_addr;
-        printf("║ #%02d: 0x%-24p ║\n", i, ret_addr);
+        printf("║ #%02d: 0x%-24p  ║\n", i, ret_addr);
         
         /* 上一级EBP在当前EBP指向的位置 */
         void* next_frame = current_frame[0];

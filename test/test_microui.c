@@ -1,0 +1,108 @@
+#include "../src/minitest.h"
+#include "../src/microui.h"
+#include "../src/ui_renderer.h"
+#include "../src/term.h"
+
+static int text_width(mu_Font font, const char *text, int len) {
+    if (len == -1) { len = strlen(text); }
+    return r_get_text_width(text, len);
+}
+
+static int text_height(mu_Font font) {
+    return r_get_text_height();
+}
+
+static void process_frame(mu_Context *ctx) {
+    mu_begin(ctx);
+
+    if (mu_begin_window(ctx, "Log Window", mu_rect(3, 3, 40, 10))) {
+        
+        mu_end_window(ctx);
+    }
+
+    mu_end(ctx);    
+}
+
+TEST(test, microui) {
+    SetConsoleOutputCP(65001);
+    
+    /* init microui */
+    mu_Context *ctx = malloc(sizeof(mu_Context));
+    mu_init(ctx);
+    ctx->text_width = text_width;
+    ctx->text_height = text_height;
+
+    r_init();
+    term_hide_cursor();
+    
+    while(1) {
+        TermEvent e = term_poll_event();
+        if (e.type == TERM_EV_NONE) {
+            Sleep(10);
+            continue;
+        }
+        
+        switch (e.type) {
+        case TERM_EV_KEY:
+            if (e.u.key.pressed && e.u.key.key_code == VK_ESCAPE) {
+                goto QUIT;
+            }
+
+            if(e.u.key.pressed) {
+                mu_input_mousedown(ctx, e.u.mouse.x, e.u.mouse.y, e.u.key.utf8[0]);
+            }else {
+                mu_input_mouseup(ctx, e.u.mouse.x, e.u.mouse.y, e.u.key.utf8[0]);
+            }
+            break;
+
+        case TERM_EV_MOUSE:
+            switch(e.u.mouse.type) {
+                case 1: // 移动
+                    mu_input_mousemove(ctx, e.u.mouse.x, e.u.mouse.y);
+                    break;
+                case 2: // 左键
+                    mu_input_mousedown(ctx, e.u.mouse.x, e.u.mouse.y, MU_MOUSE_LEFT);
+                    break;
+                case 3: // 抬起
+                    mu_input_mouseup(ctx, e.u.mouse.x, e.u.mouse.y, MU_MOUSE_LEFT|MU_MOUSE_RIGHT|MU_MOUSE_MIDDLE);
+                    break;
+                case 4: // 右键
+                    mu_input_mousedown(ctx, e.u.mouse.x, e.u.mouse.y, MU_MOUSE_RIGHT);
+                    break;
+                case 6: // 中键
+                    mu_input_mousedown(ctx, e.u.mouse.x, e.u.mouse.y, MU_MOUSE_MIDDLE);
+                    break;
+                case 8: // 滚轮
+                    mu_input_scroll(ctx, 0, e.u.mouse.wheel);
+                    break;
+            }
+            break;
+
+        case TERM_EV_RESIZE:
+            r_init();
+            break;
+
+        default:
+            break;
+        }
+        
+        process_frame(ctx);
+        
+        r_clear(mu_color(255, 0, 0, 255));
+        mu_Command *cmd = NULL;
+        while (mu_next_command(ctx, &cmd)) {
+            switch (cmd->type) {
+                case MU_COMMAND_TEXT: r_draw_text(cmd->text.str, cmd->text.pos, cmd->text.color); break;
+                case MU_COMMAND_RECT: r_draw_rect(cmd->rect.rect, cmd->rect.color); break;
+                case MU_COMMAND_ICON: r_draw_icon(cmd->icon.id, cmd->icon.rect, cmd->icon.color); break;
+                case MU_COMMAND_CLIP: r_set_clip_rect(cmd->clip.rect); break;
+            }
+        }
+        r_present();
+    }
+    
+QUIT:
+    term_shutdown();
+    term_clear_screen();
+    term_show_cursor();
+}

@@ -55,11 +55,13 @@ static inline void renderer_set(renderer_t *r, int x, int y, const utf8_t *u, co
         renderer_set(r, x + i, y, &utf8_empty, s);
 }
 
-static inline void renderer_set_str(renderer_t *r, int x, int y, const char *str, const style_t *s) {
+
+static inline void renderer_set_str(renderer_t *r, int x, int y, const char *str, const style_t *s, int utf8_width) {
     utf8_t utf8_buf[UTF8_STR_MAX];
     int n = str_to_utf8(str, utf8_buf, UTF8_STR_MAX);
     int width = 0;
     for(int i = 0; i < n; i++) {
+        if(width >= utf8_width) break;
         renderer_set(r, width+x, y, &utf8_buf[i], s);
         width += utf8_buf[i].width;
     }

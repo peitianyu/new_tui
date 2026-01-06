@@ -51,24 +51,24 @@ static mu_Rect unclipped_rect = { 0, 0, 0x1000000, 0x1000000 };
 
 static mu_Style default_style = {
   /* font | size | padding | spacing | indent */
-  NULL, { 68, 10 }, 5, 4, 24,
+  NULL, { 68, 10 }, 1, 1, 1,
   /* title_height | scrollbar_size | thumb_size */
-  24, 12, 8,
+  1, 1, 1,
   {
-    { 230, 230, 230, 255 }, /* MU_COLOR_TEXT */
-    { 25,  25,  25,  255 }, /* MU_COLOR_BORDER */
-    { 50,  50,  50,  255 }, /* MU_COLOR_WINDOWBG */
-    { 25,  25,  25,  255 }, /* MU_COLOR_TITLEBG */
-    { 240, 240, 240, 255 }, /* MU_COLOR_TITLETEXT */
-    { 0,   0,   0,   0   }, /* MU_COLOR_PANELBG */
-    { 75,  75,  75,  255 }, /* MU_COLOR_BUTTON */
-    { 95,  95,  95,  255 }, /* MU_COLOR_BUTTONHOVER */
-    { 115, 115, 115, 255 }, /* MU_COLOR_BUTTONFOCUS */
-    { 30,  30,  30,  255 }, /* MU_COLOR_BASE */
-    { 35,  35,  35,  255 }, /* MU_COLOR_BASEHOVER */
-    { 40,  40,  40,  255 }, /* MU_COLOR_BASEFOCUS */
-    { 43,  43,  43,  255 }, /* MU_COLOR_SCROLLBASE */
-    { 30,  30,  30,  255 }  /* MU_COLOR_SCROLLTHUMB */
+    { 230, 230, 230, 0 }, /* MU_COLOR_TEXT */
+    { 25,  25,  25,  0 }, /* MU_COLOR_BORDER */
+    { 50,  50,  50,  0 }, /* MU_COLOR_WINDOWBG */
+    { 25,  25,  25,  0 }, /* MU_COLOR_TITLEBG */
+    { 240, 240, 240, 0 }, /* MU_COLOR_TITLETEXT */
+    { 0,   0,   0,   255 }, /* MU_COLOR_PANELBG */
+    { 75,  75,  75,  0 }, /* MU_COLOR_BUTTON */
+    { 95,  95,  95,  0 }, /* MU_COLOR_BUTTONHOVER */
+    { 115, 115, 115, 0 }, /* MU_COLOR_BUTTONFOCUS */
+    { 30,  30,  30,  0 }, /* MU_COLOR_BASE */
+    { 35,  35,  35,  0 }, /* MU_COLOR_BASEHOVER */
+    { 40,  40,  40,  0 }, /* MU_COLOR_BASEFOCUS */
+    { 43,  43,  43,  0 }, /* MU_COLOR_SCROLLBASE */
+    { 30,  30,  30,  0 }  /* MU_COLOR_SCROLLTHUMB */
   }
 };
 
@@ -751,7 +751,7 @@ int mu_checkbox(mu_Context *ctx, const char *label, int *state) {
   int res = 0;
   mu_Id id = mu_get_id(ctx, &state, sizeof(state));
   mu_Rect r = mu_layout_next(ctx);
-  mu_Rect box = mu_rect(r.x, r.y, r.h, r.h);
+  mu_Rect box = mu_rect(r.x, r.y, r.h*2, r.h);
   mu_update_control(ctx, id, r, 0);
   /* handle click */
   if (ctx->mouse_pressed == MU_MOUSE_LEFT && ctx->focus == id) {
@@ -955,7 +955,7 @@ static int header(mu_Context *ctx, const char *label, int istreenode, int opt) {
   }
   mu_draw_icon(
     ctx, expanded ? MU_ICON_EXPANDED : MU_ICON_COLLAPSED,
-    mu_rect(r.x, r.y, r.h, r.h), ctx->style->colors[MU_COLOR_TEXT]);
+    mu_rect(r.x, r.y, r.h*2, r.h), ctx->style->colors[MU_COLOR_TEXT]);
   r.x += r.h - ctx->style->padding;
   r.w -= r.h - ctx->style->padding;
   mu_draw_control_text(ctx, label, r, MU_COLOR_TEXT, 0);
@@ -1118,7 +1118,7 @@ int mu_begin_window_ex(mu_Context *ctx, const char *title, mu_Rect rect, int opt
     /* do `close` button */
     if (~opt & MU_OPT_NOCLOSE) {
       mu_Id id = mu_get_id(ctx, "!close", 6);
-      mu_Rect r = mu_rect(tr.x + tr.w - tr.h, tr.y, tr.h, tr.h);
+      mu_Rect r = mu_rect(tr.x + tr.w - tr.h*2, tr.y, tr.h*2, tr.h);
       tr.w -= r.w;
       mu_draw_icon(ctx, MU_ICON_CLOSE, r, ctx->style->colors[MU_COLOR_TITLETEXT]);
       mu_update_control(ctx, id, r, opt);
