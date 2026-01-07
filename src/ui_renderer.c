@@ -63,8 +63,8 @@ void r_draw_icon(int id, mu_Rect rect, mu_Color color) {
     switch (id) {
         case MU_ICON_CLOSE:     icon = "✕";   break; 
         case MU_ICON_CHECK:     icon = "*";   break;
-        case MU_ICON_COLLAPSED: icon = "+";  break;
-        case MU_ICON_EXPANDED:  icon = "-";   break;
+        case MU_ICON_COLLAPSED: icon = "⏵";  break;
+        case MU_ICON_EXPANDED:  icon = "⏷";   break;
         default:                              break;
     }
     

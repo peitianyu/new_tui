@@ -51,12 +51,12 @@ static mu_Rect unclipped_rect = { 0, 0, 0x1000000, 0x1000000 };
 
 static mu_Style default_style = {
   /* font | size | padding | spacing | indent */
-  NULL, { 1, 1 }, 0, 0, 0,
+  NULL, { 1, 1 }, 0, 0, 2,
   /* title_height | scrollbar_size | thumb_size */
   1, 1, 1,
   {
     { 230, 230, 230, 0 }, /* MU_COLOR_TEXT */
-    { 25,  25,  255,  0 }, /* MU_COLOR_BORDER */
+    { 25,  25,  25,  0 }, /* MU_COLOR_BORDER */
     { 50,  50,  50,  0 }, /* MU_COLOR_WINDOWBG */
     { 25,  25,  25,  0 }, /* MU_COLOR_TITLEBG */
     { 240, 240, 240, 0 }, /* MU_COLOR_TITLETEXT */
@@ -503,7 +503,7 @@ void mu_draw_text(mu_Context *ctx, mu_Font font, const char *str, int len,
   if (clipped) { mu_set_clip(ctx, unclipped_rect); }
 }
 
-
+// FIXME: 这部分rect宽, 我设置的都是h的2倍, 之后存在问题可能需要修改, 处理check那部分
 void mu_draw_icon(mu_Context *ctx, int id, mu_Rect rect, mu_Color color) {
   mu_Command *cmd;
   /* do clip command if the rect isn't fully contained within the cliprect */
@@ -742,7 +742,7 @@ int mu_button_ex(mu_Context *ctx, const char *label, int icon, int opt) {
   /* draw */
   mu_draw_control_frame(ctx, id, r, MU_COLOR_BUTTON, opt);
   if (label) { mu_draw_control_text(ctx, label, r, MU_COLOR_TEXT, opt); }
-  if (icon) { mu_draw_icon(ctx, icon, r, ctx->style->colors[MU_COLOR_TEXT]); }
+  if (icon) { r.w *=2; mu_draw_icon(ctx, icon, r, ctx->style->colors[MU_COLOR_TEXT]); }
   return res;
 }
 
@@ -955,9 +955,9 @@ static int header(mu_Context *ctx, const char *label, int istreenode, int opt) {
   }
   mu_draw_icon(
     ctx, expanded ? MU_ICON_EXPANDED : MU_ICON_COLLAPSED,
-    mu_rect(r.x, r.y, r.h, r.h), ctx->style->colors[MU_COLOR_TEXT]);
-  r.x += r.h - ctx->style->padding;
-  r.w -= r.h - ctx->style->padding;
+    mu_rect(r.x, r.y, r.h*2, r.h), ctx->style->colors[MU_COLOR_TEXT]);
+  r.x += r.h*2 - ctx->style->padding;
+  r.w -= r.h*2 - ctx->style->padding;
   mu_draw_control_text(ctx, label, r, MU_COLOR_TEXT, 0);
 
   return expanded ? MU_RES_ACTIVE : 0;

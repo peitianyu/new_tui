@@ -23,7 +23,7 @@ static void process_frame(mu_Context *ctx) {
     if (mu_begin_window(ctx, "Log Window", mu_rect(0, 1, 40, 6))) {
 
         /* window info */
-        if (mu_header(ctx, " Window Info")) {
+        if (mu_header(ctx, "Window Info")) {
             mu_Container *win = mu_get_current_container(ctx);
             char buf[64];
             mu_layout_row(ctx, 2, (int[]){20, -1}, 0);
