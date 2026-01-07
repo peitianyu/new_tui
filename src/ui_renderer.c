@@ -61,7 +61,7 @@ void r_draw_text(const char *text, mu_Vec2 pos, mu_Color color) {
 void r_draw_icon(int id, mu_Rect rect, mu_Color color) {
     const char* icon;
     switch (id) {
-        case MU_ICON_CLOSE:     icon = "x";   break; 
+        case MU_ICON_CLOSE:     icon = "✕";   break; 
         case MU_ICON_CHECK:     icon = "*";   break;
         case MU_ICON_COLLAPSED: icon = "+";  break;
         case MU_ICON_EXPANDED:  icon = "-";   break;
