@@ -86,6 +86,7 @@ static TermMouseEvent make_mouse_event(const MOUSE_EVENT_RECORD *m) {
 static TermKeyEvent make_key_event(const KEY_EVENT_RECORD *k) {
     TermKeyEvent e = {0};
     e.key_code = k->wVirtualKeyCode;
+    e.ctrl_code = k->dwControlKeyState;
     e.pressed = k->bKeyDown;
     e.repeat = k->wRepeatCount;
     e.scan = k->wVirtualScanCode;

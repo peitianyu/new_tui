@@ -36,9 +36,20 @@ TEST(test, term) {
                 goto QUIT;
             }
             if(e.u.key.pressed) {
-                printf("KEY %s vk=%d scan=%u utf8=%s repeat=%d",
-                       e.u.key.pressed ? "DN" : "UP", e.u.key.key_code, e.u.key.scan,
-                       e.u.key.utf8[0] ? e.u.key.utf8 : "ø", e.u.key.repeat);
+                // printf("KEY %s vk=%d cv:%d scan=%u utf8=%s repeat=%d",
+                //        e.u.key.pressed ? "DN" : "UP", e.u.key.key_code, e.u.key.ctrl_code, e.u.key.scan,
+                //        e.u.key.utf8[0] ? e.u.key.utf8 : "ø", e.u.key.repeat);
+                if(!e.u.key.ctrl_code) printf("NORMAL KEY %s utf8=%s vk=%d                       ", e.u.key.pressed ? "DN" : "UP", e.u.key.utf8[0] ? e.u.key.utf8 : "ø", e.u.key.key_code);
+                else {
+                    char buf[100];
+                    if(e.u.key.right_alt_pressed) sprintf(buf, "RIGHT_ALT|");
+                    if(e.u.key.left_alt_pressed) sprintf(buf, "LEFT_ALT|");
+                    if(e.u.key.right_ctrl_pressed) sprintf(buf, "RIGHT_CTRL|");
+                    if(e.u.key.left_ctrl_pressed) sprintf(buf, "LEFT_CTRL|");
+                    if(e.u.key.shift_pressed) sprintf(buf, "SHIFT|");
+                    printf("CTRL %s %s vk=%d                          ", buf, e.u.key.pressed ? "DN" : "UP", e.u.key.key_code);
+                }
+                    
             }
             break;
 

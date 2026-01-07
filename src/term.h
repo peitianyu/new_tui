@@ -9,7 +9,21 @@ typedef enum {
 } TermMouseEventType;
 
 typedef struct {
-    int key_code;      
+    int key_code;   
+    union {
+        int ctrl_code;
+        struct {
+            int right_alt_pressed   : 1;
+            int left_alt_pressed    : 1;
+            int right_ctrl_pressed  : 1;
+            int left_ctrl_pressed   : 1;
+            int shift_pressed       : 1;
+            int num_lock_on         : 1;
+            int scroll_lock_on      : 1;
+            int caps_lock_on        : 1;
+            int enhanced_key        : 1;
+        };
+    }; 
     char utf8[5];   // 0结尾
     int pressed;      
     int repeat;       
