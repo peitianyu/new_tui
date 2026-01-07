@@ -51,16 +51,16 @@ static mu_Rect unclipped_rect = { 0, 0, 0x1000000, 0x1000000 };
 
 static mu_Style default_style = {
   /* font | size | padding | spacing | indent */
-  NULL, { 20, 1 }, 0, 0, 0,
+  NULL, { 1, 1 }, 0, 0, 0,
   /* title_height | scrollbar_size | thumb_size */
   1, 1, 1,
   {
     { 230, 230, 230, 0 }, /* MU_COLOR_TEXT */
-    { 25,  25,  25,  0 }, /* MU_COLOR_BORDER */
+    { 25,  25,  255,  0 }, /* MU_COLOR_BORDER */
     { 50,  50,  50,  0 }, /* MU_COLOR_WINDOWBG */
     { 25,  25,  25,  0 }, /* MU_COLOR_TITLEBG */
     { 240, 240, 240, 0 }, /* MU_COLOR_TITLETEXT */
-    { 0,   0,   0,   255 }, /* MU_COLOR_PANELBG */
+    { 50,  50,  50,  0 }, /* MU_COLOR_PANELBG */
     { 75,  75,  75,  0 }, /* MU_COLOR_BUTTON */
     { 95,  95,  95,  0 }, /* MU_COLOR_BUTTONHOVER */
     { 115, 115, 115, 0 }, /* MU_COLOR_BUTTONFOCUS */

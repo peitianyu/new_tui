@@ -4,6 +4,7 @@
 #include "microui.h"
 #include "term.h"
 #include "renderer.h"
+#include "log.h"
 
 void r_init(void);
 void r_clear(mu_Color color);

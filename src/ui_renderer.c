@@ -40,7 +40,7 @@ void r_clear(mu_Color color) {
 
 void r_draw_rect(mu_Rect r, mu_Color color) {
     r = (g_is_clipping) ? rect_intersect(r, g_clip_rect) : r;
-    // printf("r: %d, %d, %d, %d, c: %d %d %d\n", r.x, r.y, r.w, r.h, color.r, color.g, color.b);
+    if (r.w <= 0 || r.h <= 0) return;
     for(int y = r.y; y < r.y + r.h; y++)
     for(int x = r.x; x < r.x + r.w; x++) {
         if(x >= g_renderer->w || y >= g_renderer->h) continue;
@@ -49,12 +49,12 @@ void r_draw_rect(mu_Rect r, mu_Color color) {
 }
 
 void r_draw_text(const char *text, mu_Vec2 pos, mu_Color color) {
-    style_t s = g_renderer->styles[pos.y * g_renderer->w + pos.x];
-    s.fg=rgb_to_mu(color);
-
     mu_Rect r = mu_rect(pos.x, pos.y, g_renderer->w-pos.x, g_renderer->h-pos.y);
     r = (g_is_clipping) ? rect_intersect(r, g_clip_rect) : r;
-    
+    if (r.w <= 0 || r.h <= 0) return;
+
+    style_t s = g_renderer->styles[pos.y * g_renderer->w + pos.x];
+    s.fg=rgb_to_mu(color);
     renderer_set_str(g_renderer, pos.x, pos.y, text, &s, r.w);
 }
 
@@ -104,6 +104,7 @@ void r_present(void) {
             int x = i % g_renderer->w;
             int y = i / g_renderer->w;
             term_move_cursor(x+1, y);
+            
             printf("%s\x1b[0m", renderer_xy_to_string(g_renderer, x, y));
         }
     }

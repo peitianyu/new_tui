@@ -2,6 +2,7 @@
 #include "../src/microui.h"
 #include "../src/ui_renderer.h"
 #include "../src/term.h"
+#include "../src/log.h"
 
 static  char logbuf[64000];
 static   int logbuf_updated = 0;
@@ -19,15 +20,11 @@ static int text_height(mu_Font font) {return r_get_text_height();}
 
 static void process_frame(mu_Context *ctx) {
     mu_begin(ctx);
-
-    if (mu_begin_window(ctx, "Log Window", mu_rect(3, 3, 40, 10))) {
-
-        mu_Container *win = mu_get_current_container(ctx);
+    if (mu_begin_window(ctx, "Log Window", mu_rect(0, 1, 40, 6))) {
 
         /* window info */
         if (mu_header(ctx, " Window Info")) {
             mu_Container *win = mu_get_current_container(ctx);
-            mu_layout_begin_column(ctx);
             char buf[64];
             mu_layout_row(ctx, 2, (int[]){20, -1}, 0);
             mu_label(ctx, " Position: ");
@@ -36,51 +33,43 @@ static void process_frame(mu_Context *ctx) {
             mu_label(ctx, " Size:");
             sprintf(buf, "%d, %d", win->rect.w, win->rect.h);
             mu_label(ctx, buf);
-            mu_layout_end_column(ctx);
 
-            mu_layout_begin_column(ctx);
-            mu_layout_row(ctx, 2, (int[]){20, 20}, 0);
-            if (mu_button(ctx, "Button 3")) {write_log("Pressed button 3");}
-            if (mu_button(ctx, "Button 4")) {write_log("Pressed button 4");}
-            mu_layout_end_column(ctx);
-
-            mu_layout_begin_column(ctx);
+            mu_layout_row(ctx, 1, (int[]){-1}, 0);
             mu_label(ctx, "====================");
             mu_text(ctx, logbuf);
             mu_label(ctx, "====================");
-            mu_layout_end_column(ctx);
         }
 
-        // if (mu_header_ex(ctx, "Tree and Text", MU_OPT_EXPANDED)) {
-        //     if (mu_begin_treenode(ctx, "Test 1")) {
-        //         if (mu_begin_treenode(ctx, "Test 1a")) {
-        //             mu_label(ctx, "Hello");
-        //             mu_label(ctx, "world");
-        //             mu_end_treenode(ctx);
-        //         }
-        //         if (mu_begin_treenode(ctx, "Test 1b")) {
-        //             if (mu_button(ctx, "Button 1")) {write_log("Pressed button 1");}
-        //             if (mu_button(ctx, "Button 2")) {write_log("Pressed button 2");}
-        //             mu_end_treenode(ctx);
-        //         }
-        //         mu_end_treenode(ctx);
-        //     }
-        //     if (mu_begin_treenode(ctx, "Test 2")) {
-        //         mu_layout_row(ctx, 2, (int[]){20, 20}, 0);
-        //         if (mu_button(ctx, "Button 3")) {write_log("Pressed button 3");}
-        //         if (mu_button(ctx, "Button 4")) {write_log("Pressed button 4");}
-        //         if (mu_button(ctx, "Button 5")) {write_log("Pressed button 5");}
-        //         if (mu_button(ctx, "Button 6")) {write_log("Pressed button 6");}
-        //         mu_end_treenode(ctx);
-        //     }
-        //     if (mu_begin_treenode(ctx, "Test 3")) {
-        //         static int checks[3] = {1, 0, 1};
-        //         mu_checkbox(ctx, "Checkbox 1", &checks[0]);
-        //         mu_checkbox(ctx, "Checkbox 2", &checks[1]);
-        //         mu_checkbox(ctx, "Checkbox 3", &checks[2]);
-        //         mu_end_treenode(ctx);
-        //     }
-        // }
+        if (mu_header_ex(ctx, "Tree and Text", MU_OPT_EXPANDED)) {
+            if (mu_begin_treenode(ctx, "Test 1")) {
+                if (mu_begin_treenode(ctx, "Test 1a")) {
+                    mu_label(ctx, "Hello");
+                    mu_label(ctx, "world");
+                    mu_end_treenode(ctx);
+                }
+                if (mu_begin_treenode(ctx, "Test 1b")) {
+                    if (mu_button(ctx, "Button 1")) {write_log("Pressed button 1");}
+                    if (mu_button(ctx, "Button 2")) {write_log("Pressed button 2");}
+                    mu_end_treenode(ctx);
+                }
+                mu_end_treenode(ctx);
+            }
+            if (mu_begin_treenode(ctx, "Test 2")) {
+                mu_layout_row(ctx, 2, (int[]){20, -1}, 0);
+                if (mu_button(ctx, "Button 3")) {write_log("Pressed button 3");}
+                if (mu_button(ctx, "Button 4")) {write_log("Pressed button 4");}
+                if (mu_button(ctx, "Button 5")) {write_log("Pressed button 5");}
+                if (mu_button(ctx, "Button 6")) {write_log("Pressed button 6");}
+                mu_end_treenode(ctx);
+            }
+            if (mu_begin_treenode(ctx, "Test 3")) {
+                static int checks[3] = {1, 0, 1};
+                mu_checkbox(ctx, "Checkbox 1", &checks[0]);
+                mu_checkbox(ctx, "Checkbox 2", &checks[1]);
+                mu_checkbox(ctx, "Checkbox 3", &checks[2]);
+                mu_end_treenode(ctx);
+            }
+        }
 
         mu_end_window(ctx);
     }
@@ -136,7 +125,7 @@ TEST(test, microui) {
 
         process_frame(ctx);
 
-        r_clear(mu_color(255, 0, 0, 255));
+        r_clear(mu_color(255, 255, 0, 255));
         mu_Command *cmd = NULL;
         while (mu_next_command(ctx, &cmd)) {
             switch (cmd->type) {
