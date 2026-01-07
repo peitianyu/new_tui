@@ -6,6 +6,7 @@
 
 static  char logbuf[64000];
 static   int logbuf_updated = 0;
+static  int win_open = 1;
 static void write_log(const char *text) {
   if (logbuf[0]) { strcat(logbuf, "\n"); }
   strcat(logbuf, text);
@@ -74,6 +75,9 @@ static void process_frame(mu_Context *ctx) {
         mu_end_window(ctx);
     }
 
+    mu_Container *cnt = mu_get_container(ctx, "Log Window");
+    win_open = cnt->open;
+
     mu_end(ctx);
 }
 
@@ -124,6 +128,8 @@ TEST(test, microui) {
         }
 
         process_frame(ctx);
+
+        if(!win_open) goto QUIT;
 
         r_clear(mu_color(255, 255, 0, 255));
         mu_Command *cmd = NULL;
